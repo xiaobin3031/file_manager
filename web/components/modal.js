@@ -1,4 +1,4 @@
-import { $, $$ } from './dom.js'
+import { $, $$ } from '../util/dom.js'
 let zIndex = 5000
 
 function buildModalOverlay() {

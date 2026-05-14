@@ -1,4 +1,4 @@
-import { ENV} from "../config/env.js"
+import { ENV } from "../config/env.js"
 
 const CHUNK_SIZE = 20 * 1024 * 1024; // 每片 xMB
 
