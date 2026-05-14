@@ -1,0 +1,21 @@
+server:
+  port: 6547
+spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 1TB
+      max-request-size: 1TB
+
+  application:
+    name: home
+  profiles:
+    active: dev
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
+  level:
+    root: info
+    com.xiaobin.home: debug

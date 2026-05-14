@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vite + React</title>
+  <link rel="stylesheet" href="/src/ftp.css"/>
+</head>
+<script>
+  window.onresize = function () {
+    resize();
+  };
+  
+  function resize() {
+    const $root = document.getElementById('root');
+    const height = `${window.innerHeight - 10}px`
+    const width = `${window.innerWidth - 10}px`
+    $root.style.height = height
+    $root.style.width = width
+  }
+</script>
+<body onload="resize()">
+<div id="root">
+  <header>
+    <div id="ops">
+      <span class="back"></span>
+      <span class="refresh"></span>
+      <span class="add"></span>
+      <span class="move"></span>
+      <span class="check"></span>
+      <span class="delete"></span>
+      <span class="unzip"></span>
+      <span class="modify"></span>
+      <span class="sort"></span>
+      <span class="mirgrate"></span>
+    </div>
+  </header>
+  <section>
+    <div id="bread"></div>
+    <div id="app"></div>
+  </section>
+  <footer></footer>
+</div>
+<script type="module" src="/src/ftp.js"></script>
+</body>
+</html>
