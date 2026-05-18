@@ -29,8 +29,8 @@ export function showModal(title, $body, $footer) {
         </div>
     `
     $overlay.innerHTML = modalText
-    $overlay.querySelector('.modal-body').appendChild($body)
-    if($footer) $overlay.querySelector('.modal-footer').appendChild($footer)
+    $('.modal-body', $overlay).appendChild($body)
+    if($footer) $('.modal-footer', $overlay).appendChild($footer)
     document.body.appendChild($overlay)
 
     $('.modal-close', $overlay).addEventListener('click', () => {

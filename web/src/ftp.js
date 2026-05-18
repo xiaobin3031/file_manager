@@ -1,8 +1,7 @@
 import { request, uploadFile, baseUrl } from '../util/request.js'
 import { $, $$ } from '../util/dom.js'
-import { showModal, hideModal } from '../util/modal.js'
+import { showModal, hideModal } from '../components/modal.js'
 import { is_enter } from '../util/key_event.js'
-import { buildAddModalBody } from '../components/buildAddModalBody.js'
 
 let currentFiles = []
 let $modals = []
@@ -29,8 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const $modal = showModal('新建', buildAddModalBody(), null)
         $modals.push($modal)
     })
-    $('#ops > span.move').addEventListener('click', (e) => {
+    $('#ops > span.move').addEventListener('click', async (e) => {
         e.stopPropagation()
+        const {selectedFiles} = getSelectedFiles()
+        if(!selectedFiles || selectedFiles.length === 0) return
+        const $body = await buildMoveModalBody()
+        const $modal = showModal('迁移', $body, null)
+        $modals.push($modal)
     })
     $('#ops > span.check').addEventListener('click', (e) => { 
         e.stopPropagation()
@@ -81,14 +85,21 @@ document.addEventListener('DOMContentLoaded', () => {
             $selectedItems.forEach(item => item.classList.remove('selected'))
         } 
     })
-    $('#ops > span.modify').addEventListener('click', (e) => {
-        e.stopPropagation()
+    $('#ops > span.modify').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const { selectedFiles } = getSelectedFiles()
+      if(!selectedFiles || selectedFiles.length === 0) return
+      const $body = buildModifyModalBody(selectedFiles)
+      const $foot = await buildModifyModalFooter($body)
+      const $modal = showModal('批量修改名称', $body, $foot)
+      $modals.push($modal)
     })
-    $('#ops > span.sort').addEventListener('click', (e) => {
-        e.stopPropagation()
-    })
-    $('#ops > span.mirgrate').addEventListener('click', (e) => {
-        e.stopPropagation()
+    $('#ops > span.sort').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      await request('/ftp/sortFilesByNameAsc', {
+        method: "POST"
+      })
+      loadDirs()
     })
 })
 
@@ -263,4 +274,349 @@ function refreshDirs(dirs) {
             refreshDirs(res)
         })
     })
+}
+
+const buildAddModalBody = () => {
+  const $body = document.createElement('div')
+    $body.id = 'file-add-body'
+
+    const bodyText = `
+        <div>
+            <label><input type="radio" name="addType" value="1" checked="true" />文件夹</label>
+            <label><input type="radio" name="addType" value="2" />文件</label>
+            <label><input type="radio" name="addType" value="3" />下载任务</label>
+            <label><input type="radio" name="addType" value="4" />下载计划</label>
+        </div>
+        <div>
+            <div class="tab-item tab-1 active">
+                <input type="text" placeholder="请输入文件夹名称" />
+            </div>
+            <div class="tab-item tab-2">
+                <div> <input type="file" multiple="multiple" /><button type="button">上传</button></div>
+                <div class="file-add-info">
+                    <span></span>
+                    <span></span>
+                    <span class="filename"></span>
+                </div>
+                <div class="file-add-progress">
+                    <div class="progress-bar"></div>
+                    <span class="progress-text">0</span>
+                </div>
+            </div>
+            <div class="tab-item tab-3">
+                <textarea placeholder="请输入下载链接"></textarea>
+            </div>
+            <div class="tab-item tab-4">
+                <div class="download-url-input">
+                    <input type="text" placeholder="请输入下载网址"/>
+                    <button type="button">测试</button>
+                </div>
+                <div class="xpath-input">
+                  <textarea rows=3 placeholder="请输入xpath表达式"></textarea>
+                </div>
+                <div class="magnet-list"></div>
+            </div>
+        </div>
+    `
+
+    $body.innerHTML = bodyText
+
+    $('.tab-1 > input', $body).addEventListener('keyup', async (e) => {
+      if(is_enter(e, {ctrl: true})) {
+        let val = e.target.value
+        if(!val || !val.trim()) {
+          return
+        }
+        val = val.trim()
+        const foldId = await request('/ftp/addFold', {
+          method: "POST",
+          body: {
+            dirName: val
+          }
+        })
+        if(!!foldId) {
+          const fold = {id: foldId, fileFlag: false, name: val}
+          const $dom = buildFileDom(fold)
+          $('#app').prepend($dom)
+          currentFiles.unshift(fold)
+          e.target.value = ''
+          hideModal($modals.pop())
+        }
+      }
+    })
+
+    Array.from($body.querySelectorAll('input[name="addType"]')).forEach((input) => {
+        input.addEventListener('change', (e) => {
+            const type = e.target.value
+            $('#file-add-body .tab-item.active')?.classList.remove('active')
+            $(`#file-add-body .tab-item.tab-${type}`).classList.add('active')
+        })
+    })
+
+    $('.tab-2 input[type="file"]', $body).addEventListener('change', (e) => {
+        const files = e.target.files
+        const $filename = $('.file-add-info span.filename', $body)
+        const $spans = $$('.file-add-info span', $body)
+        if(files.length === 0) {
+            $spans[0].innerText = ''
+            $filename.innerText = ''
+            return
+        }
+        $spans[0].innerText = `1 / ${files.length}`
+        $filename.innerText = `${files[0].name}`
+        $('.tab-2', $body).classList.add('wait')
+    })
+
+    // 上传
+    $body.querySelector('.tab-2 button').addEventListener('click', async (e) => {
+        const files = $body.querySelector('.tab-2 input[type="file"]').files
+        if(files.length === 0) {
+            alert('请选择文件')
+            return
+        }
+        const $progressBar = $('.file-add-progress .progress-bar', $body)
+        const $progressText = $('.file-add-progress .progress-text', $body)
+        const $progress = $('.file-add-progress', $body)
+        $progressBar.style.width = '0'
+        const $tab2 = $('.tab-2', $body)
+        const $filename = $('.file-add-info span.filename', $body)
+        for(let i=0;i<files.length;i++) {
+            const file = files[i]
+            const $spans = $$('.file-add-info span', $body)
+            $spans[0].innerText = `${i + 1} / ${files.length}`
+            $filename.innerText = `${file.name}`
+            $tab2.classList.replace('wait', 'uploading')
+            await uploadFile(file, (percent) => {
+                if(percent === -1) return
+                let pp = Math.min(percent, 100).toFixed(0)
+                $progressBar.style.width = `${pp}%`
+                $progressText.innerText = `${pp}`
+                if (+pp === 100) {
+                    $tab2.classList.replace('uploading', 'success')
+                }
+            })
+            await sleep()
+            $tab2.classList.replace('success', 'wait')
+            $progressBar.style.width = '0'
+            $progressText.innerText = '0'
+            await sleep()
+        }
+
+        loadDirs()
+    })
+
+    $('.tab-3 textarea', $body).addEventListener('keyup', async (e) => {
+      if(is_enter(e, {ctrl: true})) {
+        let val = e.target.value
+        if(!val || !val.trim()) return
+        val = val.trim()
+        const file = await request('/ftp/addDownload', {
+          method: "POST",
+          body: {
+            magnet: val
+          }
+        })
+        currentFiles.push(file)
+        e.target.value = ''
+        $('#app').appendChild(buildFileDom(file))
+      }
+    })
+
+    $('.tab-4 .download-url-input button', $body).addEventListener('click', async(e) => {
+      const val = e.currentTarget.previousElementSibling.value
+      const xpath_val = $('.tab-4 .xpath-input textarea').value
+      if(!val.trim() || !xpath_val?.trim()) return
+      val = val.trim()
+      let html = await request('/ftp/loadHtmlText', {
+        method: "GET",
+        body: {
+          url: val
+        }
+      })
+      if (!!html) {
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(html, 'text/html')
+        const xpathResult = document.evaluate(xpath_val, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null)
+        let results = []
+        for(let i=0;i<xpathResult.snapshotLength;i++) {
+          result.push(xpathResult.snapshotItem(i).textContent.trim())
+        }
+        const $magnetList = $('.tab-4 .magnet-list', $body)
+        let $dom = document.createElement('div')
+        $dom.innerText(`total: ${results.length}`)
+        $magnetList.appendChild($dom)
+        for(let uu of results) {
+          $dom = document.createElement('div')
+          $dom.innerText = uu
+          $magnetList.appendChild($dom)
+        }
+      }
+    })
+    
+    return $body
+}
+
+const buildMoveModalBody = async () => {
+  const $body = document.createElement('div')
+  $body.id = 'file-move-body'
+  const childrenFolds = await request('/ftp/foldByParentId', {
+    method: "GET",
+    body: {
+      parentId: 0
+    }
+  })
+  const bodyText = `
+    <div class="fold-items">
+      ${childrenFolds.map(item => {
+        return `<div data-id="${item.id}">${item.name}</div>`
+      }).join('')}
+    </div>
+  `
+  $body.innerHTML = bodyText
+
+  $body.addEventListener('click', async(e) => {
+    const $el = e.target
+    if($el.classList.contains('active')) return
+    if($el.parentNode.classList.contains('fold-items')) {
+      const foldId = $el.dataset.id
+      $('div.active', $el.parentNode)?.classList.remove('active')
+      $el.classList.add('active')
+      const folds = await request('/ftp/foldByParentId', {
+        method: "GET",
+        body: {
+          parentId: foldId
+        }
+      })
+      while($el.parentNode.nextElementSibling) {
+        $el.parentNode.nextElementSibling.remove()
+      }
+      if(folds && folds.length > 0) {
+        const $foldItems = document.createElement('div')
+        $foldItems.classList.add('fold-items')
+        $foldItems.innerHTML = folds.map(item => {
+          return `<div data-id="${item.id}">${item.name}</div>`
+        }).join('')
+        $body.appendChild($foldItems)
+      }
+    }
+  })
+  
+  $body.addEventListener('dblclick', async(e) => {
+    let { selectedFiles, $selectedItems } = getSelectedFiles()
+    if(!selectedFiles || selectedFiles.length == 0) return
+    const $el = e.target
+    const foldId = $el.dataset.id
+    if (selectedFiles[0].foldId === +foldId) return
+    selectedFiles = selectedFiles.filter(a => a.id !== +foldId)
+    if(selectedFiles.length === 0) return
+    await request('/ftp/moveFile', {
+      method: "POST",
+      body: {
+        files: selectedFiles,
+        foldId: foldId
+      }
+    })
+    hideModal($modals.pop())
+    Array.from($selectedItems).filter(item => +item.dataset.id !== +foldId).forEach(item => item.remove())
+  })
+
+  return $body
+}
+
+const buildModifyModalBody = (selectedFiles) => {
+  const $body = document.createElement('div')
+  $body.id = 'file-modify-body'
+  
+  const bodyText = `
+    <div class="search">
+      <div class="find">
+        <input placeholder = "请输入正则表达式" />
+        <button type="button">Reduction</button>
+      </div>
+      <div class="replace">
+        <input placeholder="请输入正则表达式" />
+        <button type="button">Replace</button>
+      </div>
+    </div>
+    <div class="replace-table">
+      <table>
+      <thead>
+      <tr>
+        <th>文件名称</th>
+        <th>新文件名称</th>
+      </tr>
+      </thead>
+      <tbody>
+      </tbody>
+      </table>
+    </div>
+  `
+  $body.innerHTML = bodyText
+
+  $('.replace-table tbody', $body).innerHTML = selectedFiles.map(ff => {
+    return `
+      <tr data-id="${ff.id}">
+        <td>${ff.name}</td>
+        <td><div><textarea name="file-newname-${ff.id}">${ff.name}</textarea></div></td>
+      </tr>
+    `
+  }).join('')
+
+  $('.find > button', $body).addEventListener('click', () => {
+    $$('.replace-table tbody > tr').forEach($item => {
+      $('td:last-child textarea', $item).value = $('td:first-child').innerText
+    })
+  })
+  $('.replace > button', $body).addEventListener('click', () => {
+    const findText = $('.find input').value, replaceText = $('.replace input').value
+    if(!findText || !replaceText) return
+    let reg = new RegExp(findText)
+    $$('.replace-table tbody > tr').forEach($item => {
+      $('td:last-child textarea', $item).value = $('td:first-child').innerText.replace(reg, replaceText)
+    })
+  })
+
+  return $body
+}
+
+const buildModifyModalFooter = ($modalBody) => {
+  const $foot = document.createElement('div')
+  $foot.id = 'file-modify-foot'
+  const footText = `
+    <button type="button" class="close">Close</button>
+    <button type="button" class="ok">Ok</button>
+  `
+  $foot.innerHTML = footText
+
+  $('button.close', $foot).addEventListener('click', () => {
+    hideModal($modals.pop())
+  })
+  $('button.ok', $foot).addEventListener('click', async () => {
+    const list = []
+    $$('.replace-table tbody tr', $modalBody).forEach($item => {
+      const oldName = $('td:first-child', $item).innerText
+      const newName = $('textarea', $item).value.trim()
+      if(!newName || oldName === newName) return
+      const file = currentFiles.filter(a => a.id === +$item.dataset.id)[0]
+      if(!!file) {
+        list.push({
+          id: file.id, fileFlag: file.fileFlag, newName
+        })
+      }
+    })
+    if(list.length > 0) {
+      await request('/ftp/rename', {
+        method: "POST",
+        body: list
+      })
+      for(let item of list) {
+        currentFiles.filter(ff => item.id === ff.id)[0].name = item.newName
+        $(`.file-item[data-file-id="${item.id}"] .file-name`).innerText = item.newName
+      }
+      const { $selectedItems } = getSelectedFiles()
+      $selectedItems.forEach($item => $item.classList.remove('selected'))
+    }
+    hideModal($modals.pop())
+  })
+  return $foot
 }

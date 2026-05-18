@@ -5,16 +5,31 @@ const CHUNK_SIZE = 20 * 1024 * 1024; // 每片 xMB
 export const baseUrl = ENV.BASE_URL
 
 export async function request(url, options = {}) {
+    console.log(ENV.BASE_URL)
     const token = `Bearer ${localStorage.getItem('token') || ''}`
-    const res = await fetch(ENV.BASE_URL + url, {
-        method: options.method || 'GET',
+    let requestUrl = ENV.BASE_URL + url;
+
+    const method = (options.method || 'GET').toUpperCase();
+
+    if (method === 'GET' && options.body) {
+        const params = new URLSearchParams(options.body).toString();
+        requestUrl += (requestUrl.includes('?') ? '&' : '?') + params;
+    }
+
+    const config = {
+        method,
         headers: {
             'Content-Type': 'application/json',
             'Authorization': token,
             ...options.headers
-        },
-        body: options.body ? JSON.stringify(options.body) : undefined
-    })
+        }
+    };
+
+    if (method !== 'GET' && options.body) {
+        config.body = JSON.stringify(options.body);
+    }
+
+    const res = await fetch(requestUrl, config);
     if(!res.ok) {
         throw new Error('请求失败')
     }

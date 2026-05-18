@@ -1,5 +1,5 @@
-import { $, $$ } from '/src/util/dom.js'
-import { request } from '/src/util/request.js'
+import { $, $$ } from './util/dom.js'
+import { request } from './util/request.js'
 
 // 初始化
 init();
