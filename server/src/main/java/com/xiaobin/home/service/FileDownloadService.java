@@ -190,7 +190,7 @@ public class FileDownloadService {
             }
             // 下载完成，更新信息
             files.setName(fileName);
-            File fold = new File(this.ftpConfig.getRootPath(), String.valueOf(files.getFoldId()));
+            File fold = new File(this.fileService.getRootPath(), String.valueOf(files.getFoldId()));
             if (!fold.exists() && !fold.mkdir()) {
                 log.info("文件夹[{}]创建失败", fold.getAbsolutePath());
                 return;

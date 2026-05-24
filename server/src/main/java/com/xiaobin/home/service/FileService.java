@@ -5,10 +5,12 @@ import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.dto.FtpDirsDTO;
 import com.xiaobin.home.dto.FtpRequestDTO;
 import com.xiaobin.home.dto.login.UserFtpCache;
+import com.xiaobin.home.entity.DictManager;
 import com.xiaobin.home.entity.Files;
 import com.xiaobin.home.entity.Folds;
 import com.xiaobin.home.exception.BizException;
 import com.xiaobin.home.exception.SimpleBizException;
+import com.xiaobin.home.repository.DictManagerDao;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.FoldsDao;
 import jakarta.annotation.PostConstruct;
@@ -40,6 +42,7 @@ public class FileService {
     private static final Map<Integer, String> userFileCache = new HashMap<>();
     private static final List<Long> toUnzipFiles = new LinkedList<>();
     private static final Lock lock = new ReentrantLock();
+    private static DictManager activeDictManager;
 
     private static boolean unzipFlag = false;
 
@@ -51,9 +54,21 @@ public class FileService {
     private FtpConfig ftpConfig;
     @Autowired
     private LoginService loginService;
+    @Autowired
+    private DictManagerDao dictManagerDao;
 
     @PostConstruct
     public void fillFileType() {
+        List<DictManager> all = this.dictManagerDao.findAll();
+        for (DictManager dictManager : all) {
+            if(Boolean.TRUE.equals(dictManager.getActive())) {
+                activeDictManager = dictManager;
+                break;
+            }
+        }
+        if(activeDictManager == null) {
+            throw new SimpleBizException("当前没有生效的磁盘，请先维护");
+        }
         Thread.ofVirtual().start(() -> {
 
             signDeleteInDeletedFold();
@@ -77,11 +92,11 @@ public class FileService {
         });
 
         Thread.ofVirtual().start(() -> {
-            log.info("将文件迁移到指定目录: {}", this.ftpConfig.getRootPath());
+            log.info("将文件迁移到指定目录: {}", this.getRootPath());
             PageQueryService<Files> pageQueryService = new PageQueryService<>();
             pageQueryService.setMapper(this.filesDao::loadToMoveFiles);
             pageQueryService.setIdMapper((file, minId) -> {
-                String targetPath = file.getStoragePath().replaceAll("^/home/xiaobin/Downloads", this.ftpConfig.getRootPath());
+                String targetPath = file.getStoragePath().replaceAll("^/home/xiaobin/Downloads", this.getRootPath());
                 File targetFile = new File(targetPath);
                 if (!targetFile.exists()) {
                     File parentFile = targetFile.getParentFile();
@@ -434,7 +449,7 @@ public class FileService {
     }
 
     private void movePhysicsFile(File srcFile, Long toFoldId, Integer userId) {
-        File foldDir = new File(this.ftpConfig.getRootPath(), String.valueOf(toFoldId));
+        File foldDir = new File(this.getRootPath(), String.valueOf(toFoldId));
         if (!foldDir.exists() && !foldDir.mkdir()) {
             return;
         }
@@ -566,7 +581,7 @@ public class FileService {
             fold.setCreateAt(LocalDateTime.now());
             this.foldsDao.save(fold);
             if (fold.getId() != null && fold.getId() > 0) {
-                File foldDir = new File(this.ftpConfig.getRootPath(), String.valueOf(fold.getId()));
+                File foldDir = new File(this.getRootPath(), String.valueOf(fold.getId()));
                 if (!foldDir.exists() && !foldDir.mkdir()) {
                     log.error("创建文件夹失败: {}", foldDir.getName());
                 }
@@ -761,7 +776,7 @@ public class FileService {
     public void convertRmvbToMp4(Files files) {
         if (isRmvb(files.getFileType())) {
             File oriFile = new File(files.getStoragePath());
-            File targetFold = new File(this.ftpConfig.getRootPath(), String.valueOf(files.getFoldId()));
+            File targetFold = new File(this.getRootPath(), String.valueOf(files.getFoldId()));
             if (!targetFold.exists() && !targetFold.mkdirs()) {
                 log.error("文件夹创建失败: {}", targetFold.getAbsolutePath());
                 return;
@@ -949,28 +964,11 @@ public class FileService {
         }
     }
 
-    public void migrateFold(File fold, List<Files> filesList) {
-        for (Files files : filesList) {
-            if (files.getStoragePath().startsWith(fold.toString())) continue;
-            try {
-                File source = new File(files.getStoragePath());
-                File target = new File(fold, files.getName());
-                java.nio.file.Files.copy(source.toPath(), target.toPath());
-                files.setStoragePath(target.getAbsolutePath());
-                java.nio.file.Files.delete(source.toPath());
-                this.filesDao.save(files);
-                log.info("文件[{}]-->[{}]迁移成功", source.getAbsolutePath(), target.getAbsolutePath());
-            } catch (Exception e) {
-                log.error("迁移失败: {}", e.getMessage());
-            }
-        }
-    }
-
     private File previewImage(Files files) {
         return new File(this.ftpConfig.getPreviewPath(), files.getId() + ".webp");
     }
 
-    private void migrateFiles() {
-
+    public String getRootPath() {
+        return this.ftpConfig.getRootPath();
     }
 }

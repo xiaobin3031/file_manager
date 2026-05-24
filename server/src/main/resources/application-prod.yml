@@ -11,7 +11,7 @@ spring:
     name: home
 
 ftp:
-  root-path: "/home/xiaobin/mnt/wd4t/.cloud_storage"
+  root-path: "/home/xiaobin/mnt/wd12t/.cloud_storage"
   preview-path: "/home/xiaobin/mnt/wd4t/.cloud_preview/home-app"
   tmp-path: "/tmp"
   qbittorrent:

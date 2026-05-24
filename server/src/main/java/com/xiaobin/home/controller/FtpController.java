@@ -248,7 +248,7 @@ public class FtpController {
     public ApiResponse uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("filename") String filename) {
         UserFtpCache ftpCache = this.loginService.getFtpCache();
         if (!ftpCache.isPhysicsFlag()) {
-            File foldDir = new File(this.ftpConfig.getRootPath(), String.valueOf(ftpCache.currentFoldId()));
+            File foldDir = new File(this.fileService.getRootPath(), String.valueOf(ftpCache.currentFoldId()));
             if (!foldDir.exists() && !foldDir.mkdir()) {
                 return ApiResponse.error("文件夹创建失败");
             }

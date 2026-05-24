@@ -60,7 +60,7 @@ public class FileUploadController {
             files = this.fileService.buildFiles(ftpCache.currentFoldId(),
                     dto.getFileName(),
                     dto.getTotalSize(),
-                    this.ftpConfig.getRootPath() + File.separator + dto.getFileName(),
+                    this.fileService.getRootPath() + File.separator + ftpCache.currentFoldId() + File.separator + dto.getFileName(),
                     this.loginService.getLoginId());
             files.setStatus(FileStatusConstant.UPLOAD);
             this.filesDao.save(files);
