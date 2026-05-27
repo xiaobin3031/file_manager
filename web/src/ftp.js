@@ -1,10 +1,10 @@
-import { request, uploadFile, baseUrl } from '#utils/request'
-import { $, $$ } from '#utils/dom'
-import { is_enter } from '#utils/key_event'
-import { buildFileDom } from '#pages/fileDom'
-import { appendAddModal } from '#components/addModal'
-import { appendModifyModal } from '#pages/modifyModal'
-import { refreshDirs, loadDirs, getFiles, getSelectedFiles } from '#pages/file'
+import { request } from '#utils/request.js'
+import { $, $$ } from '#utils/dom.js'
+import { is_enter } from '#utils/key_event.js'
+import { buildFileDom } from '#pages/fileDom.js'
+import { appendAddModal } from '#pages/addModal.js'
+import { appendModifyModal } from '#pages/modifyModal.js'
+import { refreshDirs, loadDirs, getFiles, getSelectedFiles } from '#pages/file.js'
 
 window.addEventListener('resize', () => {
   resize()

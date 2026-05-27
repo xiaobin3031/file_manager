@@ -1,5 +1,5 @@
-import { $, $$ } from '#utils/dom'
-import { request } from '#utils/request'
+import { $, $$ } from '#utils/dom.js'
+import { request } from '#utils/request.js'
 
 let $modal = null
 

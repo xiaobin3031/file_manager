@@ -1,6 +1,6 @@
-import { request } from '#utils/request'
-import { $, $$ } from '#utils/dom'
-import { buildFileDom } from '#pages/fileDom'
+import { request } from '#utils/request.js'
+import { $, $$ } from '#utils/dom.js'
+import { buildFileDom } from '#pages/fileDom.js'
 
 let currentFiles = []
 
@@ -12,7 +12,7 @@ export const getFiles = (files) => {
   return currentFiles
 }
 
-export const loadDirs = () => {
+export const loadDirs = async () => {
   let dirs = await request('/ftp/listDirs')
   refreshDirs(dirs)
 }
@@ -30,10 +30,12 @@ export const refreshDirs = (dirs) => {
     $app.appendChild(buildFileDom(file, currentFiles))
   }
 
-  const breadText = dirs.path.map(p => {
-    return `<span class="path">${p}</span>`
-  })
-  $('#bread').innerHTML = `/${breadText.join('/')}`
+  if(dirs.path) {
+    const breadText = dirs.path.map(p => {
+      return `<span class="path">${p}</span>`
+    })
+    $('#bread').innerHTML = `/${breadText.join('/')}`
+  }
   $$('span.path:not(:last-child)').forEach($path => {
     $path.addEventListener('click', async (e) => {
       const res = await request('/ftp/changeDir', {

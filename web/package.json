@@ -15,9 +15,9 @@
     "vite": "^6.3.5"
   },
   "imports": {
-    "#components/*": "./components/*.js",
-    "#utils/*": "./util/*.js",
-    "#pages/*": "./src/page/*.js",
-    "#configs/*": "./config/*.js"
+    "#components/*": "./components/*",
+    "#utils/*": "./util/*",
+    "#pages/*": "./src/page/*",
+    "#configs/*": "./config/*"
   }
 }

@@ -1,6 +1,6 @@
-import { $, $$ } from '#utils/dom'
-import { request } from '#utils/request'
-import { getFiles } from '#pages/file'
+import { $, $$ } from '#utils/dom.js'
+import { request } from '#utils/request.js'
+import { getFiles } from '#pages/file.js'
 
 let $modal = null
 
