@@ -51,6 +51,7 @@ table, td, th {
         }
 
         & .file-sample {
+            position: relative;
             width: 100%;
             height: 200px;
             border-radius: 10px;
@@ -58,6 +59,16 @@ table, td, th {
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
+
+            & .play-icon {
+              position: absolute;
+              width: 50px;
+              height: 50px;
+              right: 10px;
+              bottom: 10px;
+              background: url('/asserts/play.svg') no-repeat center / cover;
+              display: none;
+            }
         }
 
         & .file-info {
@@ -72,6 +83,10 @@ table, td, th {
 
         &.selected {
             border-color: #007bff;
+        }
+
+        &:hover .play-icon {
+          display: block;
         }
     }
 }

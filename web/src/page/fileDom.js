@@ -44,7 +44,9 @@ export const buildFileDom = (file) => {
   })
 
   const bodyText = `
-    <div class="file-sample"></div>
+    <div class="file-sample">
+      <div class="play-icon"></div>
+    </div>
     <div class="file-info">
         <div class="file-name">${file.name}</div>
     </div>
@@ -53,10 +55,11 @@ export const buildFileDom = (file) => {
 
   const $sample = $('.file-sample', $file)
   $sample.addEventListener('click', (e) => {
-    e.currentTarget.parentNode.classList.toggle('selected')
+    $file.classList.toggle('selected')
     changeCheckOpsStatus()
   })
-  $sample.addEventListener('dblclick', (e) => {
+  $('.play-icon', $file).addEventListener('click', (e)=> {
+    e.stopPropagation()
     dblClickFile(file)
   })
 
