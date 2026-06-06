@@ -3,11 +3,15 @@ import { $, $$ } from '#utils/dom.js'
 import { is_space, is_left, is_right } from '#utils/key_event.js'
 
 let step = 10
-let $video
-let $videoControl
 let controlHideTimer
 let inVideoControl = false
 let curFileId
+let videoList
+
+let $video
+let $videoControl
+let $domOverlay
+let $videoList
 
 function buildVideoSrc(fileId) {
   const token = localStorage.getItem('token')
@@ -31,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('.video-title span', $videoPlay).innerText = name
   $videoControl = $('#video-play .video-control')
+  $videoList = $('.video-container .video-list', $videoPlay)
   videoControl()
   videoProgress()
 })
@@ -123,6 +128,44 @@ function videoControl() {
     $video.currentTime = percent * $video.duration
     videoPlay()
   })
+
+  $('.btn-list', $videoControl).addEventListener('click', async e => {
+    if ($videoList.children.length == 0) {
+      videoList = await request('/media/video-list', {
+        method: 'POST', body: {id: curFileId}
+      })
+      fillVideoList(videoList, $videoList)
+    }
+    $videoList.classList.toggle('hide')
+  })
+}
+
+function fillVideoList(list, $videoList) {
+  const $body = list.map(file => {
+    return `
+      <div class="video-item ${file.id === +curFileId ? 'active': ''}" data-file-id="${file.id}" data-filename="${file.name}">
+        <div class="video-sample" style="background: url('${baseUrl}/file/sample/${file.id}.webp') no-repeat center / cover;"></div>
+        <div class="video-name">${file.name}</div>
+      </div>
+    `
+  }).join('')
+  $videoList.innerHTML = $body
+
+  $videoList.addEventListener('click', e => {
+    const target = e.target.parentElement
+    if(target.classList.contains('video-item')) {
+      const src = buildVideoSrc(target.dataset.fileId)
+      videoInit(src, target.dataset.filename)
+      $('.active', $videoList).classList.remove('active')
+      target.classList.add('active')
+      videoPlay()
+    }
+  })
+
+  $videoList.addEventListener('wheel', e => {
+    e.preventDefault()
+    $videoList.scrollLeft += e.deltaY
+  }, { passive: false })
 }
 
 function formatTime(time) {
@@ -163,7 +206,8 @@ function videoProgress() {
 
 function videoPlay() {
   $video.play()
-  $('.btn-play', $videoControl).classList.add('play')
+  $('.btn-play', $videoControl).classList.add('play') 
+  $videoList.classList.add('hide')
 }
 
 function videoPause() {
@@ -207,4 +251,11 @@ async function prevVideo() {
     const src = buildVideoSrc(file.id)
     videoInit(src, file.name)
   }
+}
+
+function videoListDom() {
+  if(!$domOverlay) {
+    $domOverlay = document.createElement('div')
+  }
+
 }

@@ -7,7 +7,6 @@ export const buildFileDom = (file) => {
   $file.classList.add('file-item')
   $file.draggable = true
   $file.dataset.fileId = file.id
-  $file.dataset.fileId = file.id
   $file.addEventListener('dragstart', (e) => {
     e.dataTransfer.setData('dragFileId', e.currentTarget.dataset.fileId)
   })

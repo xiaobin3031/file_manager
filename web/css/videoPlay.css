@@ -1,6 +1,11 @@
 :root {
   --title-header-height: 40px;
   --foot-height: 70px;
+  --video-name-height: 30px;
+}
+
+* {
+  box-sizing: border-box;
 }
 body {
   margin: 0;
@@ -20,6 +25,7 @@ body {
   }
 
   & .video-container {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -28,9 +34,53 @@ body {
     & video {
       max-height: 100%;
     }
+
+    & .video-list {
+      position: absolute;
+      height: 200px;
+      width: 100%;
+      background: rgba(40, 40, 40, 0.7);
+      bottom: 5px;
+
+      display: flex;
+      flex-direction: row;
+      overflow-x: scroll;
+      overflow-y: hidden;
+
+      &.hide {
+        height: 0;
+      }
+
+      & .video-item {
+        cursor: pointer;
+        padding: 10px;
+        width: 250px;
+
+        &.active .video-sample {
+          outline: 3px solid blue;
+        }
+      }
+
+      & .video-sample {
+        height: calc(100% - var(--video-name-height));
+      }
+      & .video-name {
+        height: var(--video-name-height);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        color: white;
+      }
+    }
+    & .video-list::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   & .video-control {
+    position: relative;
     height: var(--foot-height);
     background: rgba(40, 40, 40, 0.7);
     margin: 0 100px;
@@ -105,6 +155,10 @@ body {
 
     & .btn-fullscreen {
       background: url('/asserts/full-screen.svg') no-repeat center / cover;
+    }
+
+    & .btn-list {
+      background: url('/asserts/list.svg') no-repeat center / cover;
     }
 
     & .current-time, & .duration {
