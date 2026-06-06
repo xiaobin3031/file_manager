@@ -31,7 +31,7 @@ public class UserFtpCache {
     private Long curFileId;
 
     public long currentFoldId() {
-        return foldIds.isEmpty() ? 0L : foldIds.get(0);
+        return foldIds.isEmpty() ? 0L : foldIds.getFirst();
     }
 
     public String getCurrentPath() {

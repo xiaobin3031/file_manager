@@ -106,17 +106,7 @@ public class FtpController {
             }
             if (foldId > 0L) {
                 List<Files> files = filesDao.findFilesByFoldIdAndUserIdAndDeletedFalse(foldId, this.loginService.getLoginId());
-                // 按照fileType排序，如果一样的话，按照sort排序
-                Comparator<Files> comparator = Comparator.comparing(a -> Objects.requireNonNullElse(a.getFileType(), ""));
-                comparator = comparator.thenComparing(a -> Objects.requireNonNullElse(a.getSort(), 0));
-                files.sort(comparator);
-                files.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), 0)));
-                for (Files file : files) {
-                    FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(file.getId(), true, file.getName());
-                    ftpDirsDTO.setFileType(file.getFileType());
-                    ftpDirsDTO.setSort(file.getSort());
-                    list.add(ftpDirsDTO);
-                }
+                this.fileService.formatFiles(files, list);
             }
             if (!ftpCache.getFoldIds().isEmpty()) {
                 PlayHistory playHistory = this.playHistoryDao.findOneByFoldIdAndUserIdAndStatus(ftpCache.getFoldIds().getFirst(), this.loginService.getLoginId(), (short) 0);

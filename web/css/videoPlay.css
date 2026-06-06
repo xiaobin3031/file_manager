@@ -24,6 +24,10 @@ body {
     align-items: center;
     justify-content: center;
     height: calc(100% - var(--title-header-height) - var(--foot-height) - 30px);
+
+    & video {
+      max-height: 100%;
+    }
   }
 
   & .video-control {
@@ -37,30 +41,81 @@ body {
     align-items: center;
     column-gap: 10px;
 
-    & .btn-play {
+    &.hide {
+    }
+
+    & > .btn {
       height: 50%;
       width: 40px;
+      cursor: pointer;
+      border-style: none;
+    }
+
+    & .btn-play {
+      background: url('/asserts/play_fill.svg') no-repeat center / cover;
 
       &.play {
-        background: url('/asserts/play_fill.svg') no-repeat center / cover;
+        background: url('/asserts/stop.svg') no-repeat center / cover;
       }
-      &.stop {
-        background: url('/asserts/dtop.svg') no-repeat center / cover;
-      }
+    }
+
+    & .btn-previous {
+      background: url('/asserts/previous.svg') no-repeat center / cover;
     }
 
     & .progress-wrapper {
       width: 100%;
+      position: relative;
 
       display: flex;
       align-items: center;
 
       & .progress-bg {
+        position: absolute;
         background-color: white;
         height: 10px;
         width: 100%;
         border-radius: 10px;
       }
+
+      & .progress-current {
+        position: absolute;
+        background-color: blue;
+        height: 10px;
+        border-radius: 10px;
+        pointer-events: none;
+      }
+    }
+
+    & .btn-next {
+      background: url('/asserts/next.svg') no-repeat center / cover;
+    }
+
+    & .btn-volume {
+      background: url('/asserts/large-voice.svg') no-repeat center / cover;
+
+      &.no-voice {
+        background: url('/asserts/no-voice.svg') no-repeat center / cover;
+      }
+    }
+
+    & .volume-silder:focus {
+      outline: none;
+    }
+
+    & .btn-fullscreen {
+      background: url('/asserts/full-screen.svg') no-repeat center / cover;
+    }
+
+    & .current-time, & .duration {
+      min-width: 50px;
+      max-width: 60px;
+      overflow: hidden;
+      color: white;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
   }
 }

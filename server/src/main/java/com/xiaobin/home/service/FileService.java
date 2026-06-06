@@ -61,12 +61,12 @@ public class FileService {
     public void fillFileType() {
         List<DictManager> all = this.dictManagerDao.findAll();
         for (DictManager dictManager : all) {
-            if(Boolean.TRUE.equals(dictManager.getActive())) {
+            if (Boolean.TRUE.equals(dictManager.getActive())) {
                 activeDictManager = dictManager;
                 break;
             }
         }
-        if(activeDictManager == null) {
+        if (activeDictManager == null) {
             throw new SimpleBizException("当前没有生效的磁盘，请先维护");
         }
         Thread.ofVirtual().start(() -> {
@@ -970,5 +970,19 @@ public class FileService {
 
     public String getRootPath() {
         return this.ftpConfig.getRootPath();
+    }
+
+    public void formatFiles(List<Files> files, List<FtpDirsDTO> list) {
+        // 按照fileType排序，如果一样的话，按照sort排序
+        Comparator<Files> comparator = Comparator.comparing(a -> Objects.requireNonNullElse(a.getFileType(), ""));
+        comparator = comparator.thenComparing(a -> Objects.requireNonNullElse(a.getSort(), 0));
+        files.sort(comparator);
+        files.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), 0)));
+        for (Files file : files) {
+            FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(file.getId(), true, file.getName());
+            ftpDirsDTO.setFileType(file.getFileType());
+            ftpDirsDTO.setSort(file.getSort());
+            list.add(ftpDirsDTO);
+        }
     }
 }

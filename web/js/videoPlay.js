@@ -1,12 +1,23 @@
-import { baseUrl } from '#utils/request.js'
+import { baseUrl, request } from '#utils/request.js'
 import { $, $$ } from '#utils/dom.js'
+import { is_space, is_left, is_right } from '#utils/key_event.js'
 
+let step = 10
 let $video
+let $videoControl
+let controlHideTimer
+let inVideoControl = false
+let curFileId
+
+function buildVideoSrc(fileId) {
+  const token = localStorage.getItem('token')
+  curFileId = fileId
+  return `${baseUrl}/media/play?fileId=${fileId}&token=${token}`
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search)
-  const token = localStorage.getItem('token')
-  let src = `${baseUrl}/media/play?fileId=${params.get('fileId')}&token=${token}`
+  let src = buildVideoSrc(params.get('fileId'))
   const start = params.get('start')
   const end = params.get('end')
   const name = params.get('name')
@@ -19,4 +30,181 @@ document.addEventListener('DOMContentLoaded', () => {
   $video.src = src
 
   $('.video-title span', $videoPlay).innerText = name
+  $videoControl = $('#video-play .video-control')
+  videoControl()
+  videoProgress()
 })
+
+document.addEventListener('mousemove', () => {
+  if(!$videoControl || inVideoControl) return
+
+  $videoControl.classList.remove('hide')
+  clearTimeout(controlHideTimer)
+  controlHideTimer = setTimeout(() => {
+    $videoControl.classList.add('hide')
+  }, 2000)
+})
+
+document.addEventListener('keyup', e => {
+  if(is_space(e)) {
+    if($video.paused) {
+      videoPlay()
+    }else{
+      videoPause()
+    }
+  }else if(is_left(e)) {
+    $video.currentTime = currentTime($video.currentTime - step)
+  }else if(is_right(e)) {
+    $video.currentTime = currentTime($video.currentTime + step)
+  }
+})
+
+function currentTime(time) {
+  if(time < 0) time = 0
+  if(time > $video.duration) time = $video.duration
+  return time
+}
+
+function videoControl() {
+  $videoControl.addEventListener('mouseleave', e => {
+    setTimeout(() => {
+      e.target.classList.add('hide')
+    }, 2000)
+  })
+  $videoControl.addEventListener('mouseenter', e => {
+    inVideoControl = true
+    clearTimeout(controlHideTimer)
+  })
+  $videoControl.addEventListener('mouseleave', () => {
+    inVideoControl = false
+  })
+  $('.btn-play', $videoControl).addEventListener('click', e => {
+    e.target.classList.toggle('play')
+    if(e.target.classList.contains('play')) {
+      $video.play()
+    }else{
+      $video.pause()
+    }
+  })
+
+  $('.btn-volume', $videoControl).addEventListener('click', e => {
+    e.target.classList.toggle('no-voice')
+    if(e.target.classList.contains('no-voice')) {
+      $video.muted = true
+      $('.volume-silder', $videoControl).value = 0
+    }else{
+      $video.muted = false
+      $('.volume-silder', $videoControl).value = 100
+      $video.volume = 1
+    }
+  })
+
+  $('.btn-fullscreen', $videoControl).addEventListener('click', e => {
+    $video.requestFullscreen()
+  })
+
+  $('.volume-silder', $videoControl).addEventListener('input', e => {
+    $video.volume = e.target.value / 100
+    if(e.target.value > 0) {
+      $('.btn-volume', $videoControl).classList.remove('no-voice')
+      $video.muted = false
+    }else{
+      $('.btn-volume', $videoControl).classList.add('no-voice')
+      $video.muted = true
+    }
+  })
+
+  $('.btn-next', $videoControl).addEventListener('click', nextVideo)
+  $('.btn-previous', $videoControl).addEventListener('click', prevVideo)
+
+  $('.progress-bg', $videoControl).addEventListener('click', e => {
+    const rect = e.target.getBoundingClientRect()
+    const percent = (e.clientX - rect.left) / rect.width
+    $video.currentTime = percent * $video.duration
+    videoPlay()
+  })
+}
+
+function formatTime(time) {
+  if(time < 10) {
+    return `0${time}`
+  }
+  return time + ''
+}
+
+function parseTime(time) {
+  let hour, minute, second
+  second = parseInt(time % 60)
+  minute = parseInt(time / 60)
+  hour = parseInt(minute / 60)
+  if(hour > 0) {
+    minute = time % 60
+    return `${formatTime(hour)}:${formatTime(minute)}:${formatTime(second)}`
+  }else{
+    return `${formatTime(minute)}:${formatTime(second)}`
+  }
+}
+
+function videoProgress() {
+  $video.addEventListener('timeupdate', () => {
+    const time = $video.currentTime
+    const total = $video.duration
+    $('.progress-wrapper .progress-current', $videoControl).style.width = `${time / total * 100}%`
+    $('.current-time', $videoControl).innerText = parseTime(time)
+  })
+
+  $video.addEventListener('loadedmetadata', () => {
+    const total = $video.duration
+    $('.duration', $videoControl).innerText = parseTime(total)
+  })
+
+  $video.addEventListener('ended', nextVideo)
+}
+
+function videoPlay() {
+  $video.play()
+  $('.btn-play', $videoControl).classList.add('play')
+}
+
+function videoPause() {
+  $video.pause()
+  $('.btn-play', $videoControl).classList.remove('play')
+}
+
+function videoInit(src, name) {
+  videoPause()
+  $('.progress-current', $videoControl).style.width = 0
+  const oriText = $('.duration', $videoControl).innerText
+  let txt
+  if(oriText.length > 5) {
+    txt = '00:00:00'
+  }else{
+    txt = '00:00'
+  }
+  $('.duration', $videoControl).innerText = txt
+  $('.current-time', $videoControl).innerText = txt
+  if(src) $video.src = src
+  $('#video-play .video-title span').innerText = name
+}
+
+async function nextVideo() {
+  let file = await request('/media/next', {
+    method: "POST",
+    body: {id: curFileId}
+  })
+  if(file && file.id) {
+    const src = buildVideoSrc(file.id)
+    videoInit(src, file.name)
+  }
+}
+
+async function prevVideo() {
+  let file = await request('/media/previous', {
+    method: "POST",
+    body: {id: curFileId}
+  })
+  if(file && file.id) {
+    const src = buildVideoSrc(file.id)
+    videoInit(src, file.name)
+  }
+}

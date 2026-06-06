@@ -47,6 +47,18 @@ public interface FilesDao extends JpaRepository<Files, Long> {
     @Query("select f from Files f where f.foldId = :foldId and f.sort > :sort and f.fileType like 'image/%' and f.deleted = false order by f.sort asc limit 1")
     Files loadNextImageInFold(Long foldId, Integer sort, Integer userId);
 
+    @Query("select f from Files f where f.foldId = :foldId and f.sort > :sort and f.fileType = :fileType and f.deleted = false order by f.sort asc limit 1")
+    Files loadNextFileInFold(Long foldId, Integer sort, Integer userId, String fileType);
+
+    @Query("select f from Files f where f.foldId = :foldId and f.sort < :sort and f.fileType = :fileType and f.deleted = false order by f.sort desc limit 1")
+    Files loadPrevFileInFold(Long foldId, Integer sort, Integer userId, String fileType);
+
+    @Query("select f from Files f where f.foldId = :foldId and f.id > :curFileId and f.fileType = :fileType and f.deleted = false order by f.id asc limit 1")
+    Files loadNextFileInFold(Long foldId, Long curFileId, Integer userId, String fileType);
+
+    @Query("select f from Files f where f.foldId = :foldId and f.id < :curFileId and f.fileType = :fileType and f.deleted = false order by f.id desc limit 1")
+    Files loadPrevFileInFold(Long foldId, Long curFileId, Integer userId, String fileType);
+
     /**
      * 查找上一张图片
      */
@@ -63,6 +75,8 @@ public interface FilesDao extends JpaRepository<Files, Long> {
 
     @Query("select f from Files f where f.fileType in :fileTypes and f.id > :minId and f.deleted = false order by f.id limit :size")
     List<Files> loadFilesByFileType(long minId, List<String> fileTypes, int size);
+
+    List<Files> findByFileTypeAndFoldIdAndDeletedFalse(String fileType, Long foldId);
 
     @Query("select f from Files f where f.foldId = :foldId and f.deleted = false")
     List<Files> findByFoldIdAndDeletedFalse(Long foldId);
