@@ -91,7 +91,9 @@ public class FileDownloadService {
         if (response.getBody() == null) {
             throw new SimpleBizException("请求失败: " + path);
         }
-        log.info("请求: [{}],返回: [{}]", path, response.getBody());
+        if (log.isDebugEnabled()) {
+            log.debug("请求: [{}],返回: [{}]", path, response.getBody());
+        }
         return response.getBody();
     }
 

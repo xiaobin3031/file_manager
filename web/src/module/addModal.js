@@ -1,10 +1,10 @@
 import { $, $$ } from '#utils/dom.js'
 import { is_enter } from '#utils/key_event.js'
 import { request, uploadFile, baseUrl } from '#utils/request.js'
-import { buildFileDom } from '#pages/fileDom.js'
+import { buildFileDom } from '#modules/fileDom.js'
 import { showModal, hideModal } from '#components/modal.js'
 import { sleep } from '#utils/time.js'
-import { loadDirs, getFiles } from '#pages/file.js'
+import { loadDirs, getFiles } from '#modules/file.js'
 
 let $modal = null
 

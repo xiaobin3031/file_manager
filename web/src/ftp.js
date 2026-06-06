@@ -1,10 +1,10 @@
 import { request } from '#utils/request.js'
 import { $, $$ } from '#utils/dom.js'
 import { is_enter } from '#utils/key_event.js'
-import { buildFileDom } from '#pages/fileDom.js'
-import { appendAddModal } from '#pages/addModal.js'
-import { appendModifyModal } from '#pages/modifyModal.js'
-import { refreshDirs, loadDirs, getFiles, getSelectedFiles } from '#pages/file.js'
+import { buildFileDom } from '#modules/fileDom.js'
+import { appendAddModal } from '#modules/addModal.js'
+import { appendModifyModal } from '#modules/modifyModal.js'
+import { refreshDirs, loadDirs, getFiles, getSelectedFiles } from '#modules/file.js'
 
 window.addEventListener('resize', () => {
   resize()
@@ -74,12 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const { selectedFiles, $selectedItems } = getSelectedFiles()
     if(selectedFiles.length === 0) return
 
-    if (window.confirm('是否删除这些文件/文件夹')) {
+    if (window.confirm('是否解压这些文件/文件夹')) {
       await request('/ftp/unzipFile', {
         method: 'POST',
         body: selectedFiles.map(item => item.id)
       })
-      $selectedItems.forEach(item => item.classList.remove('selected'))
+      refreshDirs()
     } 
   })
   $('#ops > span.modify').addEventListener('click', async (e) => {

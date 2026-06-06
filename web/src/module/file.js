@@ -1,6 +1,6 @@
 import { request } from '#utils/request.js'
 import { $, $$ } from '#utils/dom.js'
-import { buildFileDom } from '#pages/fileDom.js'
+import { buildFileDom } from '#modules/fileDom.js'
 
 let currentFiles = []
 

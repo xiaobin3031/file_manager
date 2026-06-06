@@ -17,6 +17,7 @@ import com.xiaobin.home.service.FileService;
 import com.xiaobin.home.service.LoginService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tomcat.util.http.ResponseUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -119,10 +120,14 @@ public class FtpController {
             }
             if (!ftpCache.getFoldIds().isEmpty()) {
                 PlayHistory playHistory = this.playHistoryDao.findOneByFoldIdAndUserIdAndStatus(ftpCache.getFoldIds().getFirst(), this.loginService.getLoginId(), (short) 0);
-                log.info("playHistory: {}, foldId: {}", playHistory == null ? 0L : playHistory.getId(), ftpCache.getFoldIds().getFirst());
+                if (log.isDebugEnabled()) {
+                    log.debug("playHistory: {}, foldId: {}", playHistory == null ? 0L : playHistory.getId(), ftpCache.getFoldIds().getFirst());
+                }
                 if (playHistory != null && playHistory.getFileId() != null) {
                     Files files = this.filesDao.loadById(playHistory.getFileId(), this.loginService.getLoginId());
-                    log.info("files is null: {}, files.id: {}", files == null, playHistory.getStart());
+                    if (log.isDebugEnabled()) {
+                        log.debug("files is null: {}, files.id: {}", files == null, playHistory.getStart());
+                    }
                     if (files != null) {
                         lastFiles = new FtpDirsDTO(files.getId(), true, files.getName());
                         lastFiles.setFileType(files.getFileType());
@@ -163,16 +168,22 @@ public class FtpController {
             }
         } else {
             if (dto.getFoldId() == null && dto.getDirName() != null) {
-                for (int i = 0; i < ftpCache.getPath().size() - 1; i++) {
-                    String path = ftpCache.getPath().get(i);
+                int idx = -1;
+                List<String> pathList = ftpCache.getPath().reversed();
+                log.info("当前路径: {}", pathList);
+                for (int i = 0; i < pathList.size(); i++) {
+                    String path = pathList.get(i);
                     if (path.equals(dto.getDirName())) {
-                        dto.setFoldId(ftpCache.getFoldIds().get(i));
+                        idx = i;
                         break;
                     }
                 }
-                if (dto.getFoldId() == null) {
-                    return ApiResponse.error("路径不存在");
+                if (idx == -1) {
+                    return ApiResponse.error("指定的目录不存在");
                 }
+                ftpCache.setPath(pathList.subList(idx, ftpCache.getPath().size()).reversed());
+                ftpCache.setFoldIds(ftpCache.getFoldIds().subList(idx, ftpCache.getFoldIds().size()));
+                return listDirs();
             }
             Folds fold = this.foldsDao.loadSpecialFoldsInFold(dto.getId(), this.loginService.getLoginId());
             if (fold != null) {
@@ -187,7 +198,7 @@ public class FtpController {
                 return listDirs();
             }
         }
-        return null;
+        return ApiResponse.error("路径不存在");
     }
 
     @PostMapping("/prepareFile")

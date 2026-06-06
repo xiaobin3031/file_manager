@@ -1,17 +1,32 @@
+:root {
+  --header-height: 30px;
+}
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+body {
+  margin: 0;
+  padding: 0;
+}
+
 input:focus {
-    outline: none;
+  outline: none;
 }
 input {
-    padding: 5px;
-    border-radius: 5px;
-    box-shadow: none;
-    outline: none;
+  padding: 5px;
+  border-radius: 5px;
+  box-shadow: none;
+  outline: none;
 }
 input[type="text"] {
-    border: 1px solid #ddd;
+  border: 1px solid #ddd;
 }
 section {
-    margin: 30px;
+  padding: 0 30px;
+  height: calc(100% - var(--header-height));
+  overflow-y: scroll;
 }
 
 button {
@@ -28,293 +43,300 @@ table, td, th {
 }
 
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 #app {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 30px;
-    column-gap: 60px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  column-gap: 40px;
 
-    & .file-item {
-        border: 1px solid transparent;
-        border-radius: 10px;
+  & .file-item {
+    border: 1px solid transparent;
+    border-radius: 10px;
 
-        &.dir {
-            & .file-sample {
-                background-image: url("/asserts/folder.svg");
-                background-size: 50% 50%;
-                background-repeat: no-repeat;
-                background-position: center;
-            }
-        }
-
-        & .file-sample {
-            position: relative;
-            width: 100%;
-            height: 200px;
-            border-radius: 10px;
-            cursor: pointer;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-
-            & .play-icon {
-              position: absolute;
-              width: 50px;
-              height: 50px;
-              right: 10px;
-              bottom: 10px;
-              background: url('/asserts/play.svg') no-repeat center / cover;
-              display: none;
-            }
-        }
-
-        & .file-info {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            & .file-name {
-                word-break: break-all;
-            }
-        }
-
-        &.selected {
-            border-color: #007bff;
-        }
-
-        &:hover .play-icon {
-          display: block;
-        }
+    &.dir {
+      & .file-sample {
+        background-image: url("/asserts/folder.svg");
+        background-size: 50% 50%;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
     }
+
+    & .file-sample {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      border-radius: 10px;
+      cursor: pointer;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+
+      & .play-icon {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        right: 10px;
+        bottom: 10px;
+        background: url('/asserts/play.svg') no-repeat center / cover;
+        display: none;
+      }
+    }
+
+    & .file-info {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      & .file-name {
+        word-break: break-all;
+      }
+    }
+
+    &.selected {
+      border-color: #007bff;
+    }
+
+    &:hover .play-icon {
+      display: block;
+    }
+  }
 }
 
 header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 20px;
+  padding: 10px 20px 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+  height: var(--header-height);
 }
 
 #ops {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
 
-    & > span {
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-size: cover;
+  & > span {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
 
-        &.back {
-            background-image: url("/asserts/back.svg");
-        }
-        &.refresh {
-            background-image: url("/asserts/refresh.svg");
-        }
-        &.add {
-            background-image: url("/asserts/add.svg");
-        }
-        &.move {
-            background-image: url("/asserts/move.svg");
-        }
-        &.check {
-            background-image: url("/asserts/checkbox.svg");
-        }
-        &.check.check-part {
-            background-image: url("/asserts/check-part.svg");
-        }
-        &.check.check-checked {
-            background-image: url("/asserts/check-checked.svg");
-        }
-        &.delete {
-            background-image: url("/asserts/delete.svg");
-        }
-        &.unzip {
-            background-image: url("/asserts/unzip.svg");
-        }
-        &.modify {
-            background-image: url("/asserts/modify.svg");
-        }
-        &.sort {
-            background-image: url("/asserts/sorting.svg");
-        }
-        &.mirgrate {
-            background-image: url("/asserts/mirgrate.svg");
-        }
+    &.back {
+      background-image: url("/asserts/back.svg");
     }
+    &.refresh {
+      background-image: url("/asserts/refresh.svg");
+    }
+    &.add {
+      background-image: url("/asserts/add.svg");
+    }
+    &.move {
+      background-image: url("/asserts/move.svg");
+    }
+    &.check {
+      background-image: url("/asserts/checkbox.svg");
+    }
+    &.check.check-part {
+      background-image: url("/asserts/check-part.svg");
+    }
+    &.check.check-checked {
+      background-image: url("/asserts/check-checked.svg");
+    }
+    &.delete {
+      background-image: url("/asserts/delete.svg");
+    }
+    &.unzip {
+      background-image: url("/asserts/unzip.svg");
+    }
+    &.modify {
+      background-image: url("/asserts/modify.svg");
+    }
+    &.sort {
+      background-image: url("/asserts/sorting.svg");
+    }
+    &.mirgrate {
+      background-image: url("/asserts/mirgrate.svg");
+    }
+  }
 }
 
 .modal-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  & .modal {
+    background-color: white;
+    border-radius: 10px;
+  }
+
+  & .modal-header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
 
-    & .modal {
-        background-color: white;
-        border-radius: 10px;
+    & .modal-close {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
     }
-
-    & .modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px;
-        border-bottom: 1px solid #ccc;
-
-        & .modal-close {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-    }
+  }
 }
 
 #file-add-body {
+  box-sizing: border-box;
+  width: 400px;
+
+  & > div:first-child {
+    border-bottom: 1px solid #ccc;
+  }
+
+  & > div {
+    padding: 10px;
+  }
+
+  & .tab-item {
+    display: none;
+    width: 100%;
+    height: 100%;
+
+    &.active {
+      display: block;
+    }
+  }
+
+  & .tab-1 input {
+    width: 100%;
     box-sizing: border-box;
-    width: 400px;
+  }
 
-    & > div:first-child {
-        border-bottom: 1px solid #ccc;
+  & .tab-2 {
+    &.success .file-add-info span:nth-child(2) {
+      background-image: url("/asserts/success.svg");
+      color: green;
     }
 
-    & > div {
-        padding: 10px;
+    &.uploading .file-add-info span:nth-child(2) {
+      background-image: url("/asserts/uploading.svg");
     }
 
-    & .tab-item {
-        display: none;
-        width: 100%;
+    &.wait .file-add-info span:nth-child(2) {
+      background-image: url("/asserts/wait.svg");
+    }
+
+    & .file-add-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      & > span:nth-child(2) {
+        height: 30px;
+        width: 30px;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+      }
+    }
+
+    & .file-add-progress {
+      position: relative;
+      width: 100%;
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+
+      & .progress-bar {
+        margin-top: 5px;
+        width: 0%;
         height: 100%;
 
-        &.active {
-            display: block;
-        }
-    }
+        background: linear-gradient(90deg, #3b82f6, #06b6d4);
+        border-radius: inherit;
+        transition: width 0.25s ease;
+      }
 
-    & .tab-1 input {
+      & .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 14px;
+        color: #111827;
+        font-weight: 500;
+
+        &::after {
+          content: "%";
+        }
+      }
+    }
+  }
+
+  & .tab-3 {
+    & > textarea{
+      width: 100%;
+      border-radius: 5px;
+      resize: none;
+      height: 40px;
+      padding: 5px;
+    }
+  }
+
+  & .tab-4 {
+    & > div.download-url-input {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 30px;
+      gap: 30px;
+
+      & > input {
         width: 100%;
-        box-sizing: border-box;
-    }
-
-    & .tab-2 {
-        &.success .file-add-info span:nth-child(2) {
-            background-image: url("/asserts/success.svg");
-            color: green;
-        }
-
-        &.uploading .file-add-info span:nth-child(2) {
-            background-image: url("/asserts/uploading.svg");
-        }
-
-        &.wait .file-add-info span:nth-child(2) {
-            background-image: url("/asserts/wait.svg");
-        }
-
-        & .file-add-info {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-
-            & > span:nth-child(2) {
-                height: 30px;
-                width: 30px;
-                background-repeat: no-repeat;
-                background-position: center;
-                background-size: contain;
-            }
-        }
-
-        & .file-add-progress {
-            position: relative;
-            width: 100%;
-            height: 10px;
-            background: #e5e7eb;
-            border-radius: 999px;
-
-            & .progress-bar {
-                margin-top: 5px;
-                width: 0%;
-                height: 100%;
-
-                background: linear-gradient(90deg, #3b82f6, #06b6d4);
-                border-radius: inherit;
-                transition: width 0.25s ease;
-            }
-
-            & .progress-text {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-size: 14px;
-                color: #111827;
-                font-weight: 500;
-
-                &::after {
-                    content: "%";
-                }
-            }
-        }
-    }
-
-    & .tab-3 {
-      & > textarea{
-        width: 100%;
-        border-radius: 5px;
-        resize: none;
-        height: 40px;
-        padding: 5px;
+        height: 100%;
+      }
+      & > button {
+        width: 50px;
       }
     }
 
-    & .tab-4 {
-      & > div.download-url-input {
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 30px;
-        gap: 30px;
-
-        & > input {
-          width: 100%;
-          height: 100%;
-        }
-        & > button {
-          width: 50px;
-        }
-      }
-
-      & > div.xpath-input textarea {
-        width: 100%;
-        resize: none;
-        margin-top: 5px;
-      }
+    & > div.xpath-input textarea {
+      width: 100%;
+      resize: none;
+      margin-top: 5px;
     }
+  }
 }
 
 #bread {
-    
-    & > span.path:not(:last-child) {
-        cursor: pointer;
-    }
+  & > span {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  & > span.path:not(:last-child) {
+    cursor: pointer;
+  }
 
-    & > span.path:last-child {
-        cursor: not-allowed;
-    };
+  & > span.path:last-child {
+    cursor: not-allowed;
+  };
 }
 
 #file-move-body {

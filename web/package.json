@@ -18,6 +18,7 @@
     "#components/*": "./components/*",
     "#utils/*": "./util/*",
     "#pages/*": "./src/page/*",
+    "#modules/*": "./src/module/*",
     "#configs/*": "./config/*"
   }
 }
