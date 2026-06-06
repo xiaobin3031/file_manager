@@ -125,9 +125,9 @@ public class MediaStreamController {
                 return ApiResponse.ok();
             }
             if (curFiles.getSort() != null) {
-                files = this.filesDao.loadNextFileInFold(ftpCache.currentFoldId(), curFiles.getSort(), userId, curFiles.getFileType());
+                files = this.filesDao.loadNextFileInFold(curFiles.getFoldId(), curFiles.getSort(), userId, curFiles.getFileType());
             } else {
-                files = this.filesDao.loadNextFileInFold(ftpCache.currentFoldId(), curFiles.getId(), userId, curFiles.getFileType());
+                files = this.filesDao.loadNextFileInFold(curFiles.getFoldId(), curFiles.getId(), userId, curFiles.getFileType());
             }
         }
         return ApiResponse.ok(files);
@@ -137,16 +137,15 @@ public class MediaStreamController {
     public ApiResponse previousVideoId(@RequestBody Files reqFiles) {
         Files files = null;
         if (reqFiles.getId() != null) {
-            UserFtpCache ftpCache = loginService.getFtpCache();
             Integer userId = this.loginService.getLoginId();
             Files curFiles = this.filesDao.loadById(reqFiles.getId(), userId);
             if (curFiles == null) {
                 return ApiResponse.ok();
             }
             if (curFiles.getSort() != null) {
-                files = this.filesDao.loadPrevFileInFold(ftpCache.currentFoldId(), curFiles.getSort(), userId, curFiles.getFileType());
+                files = this.filesDao.loadPrevFileInFold(curFiles.getFoldId(), curFiles.getSort(), userId, curFiles.getFileType());
             } else {
-                files = this.filesDao.loadPrevFileInFold(ftpCache.currentFoldId(), curFiles.getId(), userId, curFiles.getFileType());
+                files = this.filesDao.loadPrevFileInFold(curFiles.getFoldId(), curFiles.getId(), userId, curFiles.getFileType());
             }
             log.info("files is null: {}, next files: {}", files == null, files == null ? 0L : files.getId());
         }
@@ -157,14 +156,12 @@ public class MediaStreamController {
     public ApiResponse videoList(@RequestBody Files reqFiles) {
         List<FtpDirsDTO> list = new ArrayList<>();
         if (reqFiles.getId() != null) {
-            UserFtpCache ftpCache = loginService.getFtpCache();
             Integer userId = this.loginService.getLoginId();
             Files curFiles = this.filesDao.loadById(reqFiles.getId(), userId);
             if (curFiles == null) {
                 return ApiResponse.ok();
             }
-            Long foldId = ftpCache.getFoldIds().isEmpty() ? 0L : ftpCache.getFoldIds().getFirst();
-            List<Files> files = this.filesDao.findByFileTypeAndFoldIdAndDeletedFalse(curFiles.getFileType(), foldId);
+            List<Files> files = this.filesDao.findByFileTypeAndFoldIdAndDeletedFalse(curFiles.getFileType(), curFiles.getFoldId());
             this.fileService.formatFiles(files, list);
         }
         return ApiResponse.ok(list);

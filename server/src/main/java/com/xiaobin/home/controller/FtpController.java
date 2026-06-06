@@ -366,6 +366,18 @@ public class FtpController {
         return ApiResponse.ok(ftpDirsDTO);
     }
 
+    @PostMapping("/addDownloadTorrent")
+    public ApiResponse addDownloadTorrent(@RequestParam("file") MultipartFile file) {
+        if (file == null) {
+            return ApiResponse.error("请提供torrent文件");
+        }
+        Files files = this.fileDownloadService.downloadFromTorrent(file, this.loginService.getLoginId(), this.loginService.getFtpCache().currentFoldId());
+        FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(files.getId(), true, file.getName());
+        ftpDirsDTO.setFileType(files.getFileType());
+        ftpDirsDTO.setSort(files.getSort());
+        return ApiResponse.ok(ftpDirsDTO);
+    }
+
     @PostMapping("/addDownloadPlan")
     public ApiResponse addDownloadPlan(@RequestBody DownloadPlanDTO dto) {
         Integer loginId = this.loginService.getLoginId();

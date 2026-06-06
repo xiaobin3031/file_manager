@@ -9,6 +9,7 @@ import com.xiaobin.home.entity.Files;
 import com.xiaobin.home.exception.SimpleBizException;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.LogsDao;
+import com.xiaobin.home.util.TorrentHashUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -21,9 +22,17 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.net.CookieManager;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -97,6 +106,29 @@ public class FileDownloadService {
         return response.getBody();
     }
 
+    private void uploadTorrent(String path, byte[] torrentBytes, String filename) throws IOException, InterruptedException {
+        String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        bos.write(("--" + boundary + "\r\n").getBytes());
+        bos.write(("Content-Disposition: form-data; name=\"torrents\"; filename=\"" + filename + "\"\r\n").getBytes());
+        bos.write("Content-Type: application/x-bittorrent\r\n\r\n".getBytes());
+        bos.write(torrentBytes);
+        bos.write("\r\n".getBytes());
+        bos.write(("--" + boundary + "--\r\n").getBytes());
+        HttpRequest uploadReq = HttpRequest.newBuilder()
+                .uri(URI.create(ftpConfig.getQbittorrent().getUrlPrefix() + path))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(bos.toByteArray()))
+                .build();
+
+        try (HttpClient client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .cookieHandler(new CookieManager())
+                .build()) {
+            client.send(uploadReq, HttpResponse.BodyHandlers.ofString());
+        }
+    }
+
     public Map<String, Object> loadInfo(String hash) {
         String response = this.send(INFO_PATH, Map.of("hashes", hash));
         List<Map<String, Object>> list;
@@ -110,20 +142,21 @@ public class FileDownloadService {
         return CollectionUtils.isEmpty(list) ? null : list.getFirst();
     }
 
-    @Transactional
-    public Files downloadFromMagnet(String magnet, Integer userId, Long foldId) {
-        // 解析成hash
-        Pattern pattern = Pattern.compile("magnet:\\?xt=urn:btih:([a-zA-Z0-9]+)");
-        Matcher matcher = pattern.matcher(magnet);
-        String hash = null;
-        if (matcher.find()) {
-            hash = matcher.group(1);
+    public Files downloadFromTorrent(MultipartFile file, Integer userId, Long foldId) {
+        Files files;
+        try {
+            byte[] bytes = file.getBytes();
+            String hash = TorrentHashUtil.infoHash(bytes);
+            files = this.buildDhtFile(hash, foldId, userId);
+            this.uploadTorrent(ADD_TORRENT_PATH, bytes, file.getOriginalFilename());
+        } catch (Exception e) {
+            log.error("读取torrent的hash失败: {}", e.getMessage());
+            return null;
         }
-        if (hash == null) {
-            throw new SimpleBizException("磁力链接不合法");
-        }
-        log.info("开始下载：{}", magnet);
-        boolean addFlag = false;
+        return files;
+    }
+
+    private Files buildDhtFile(String hash, Long foldId, Integer userId) {
         Files files = this.filesDao.loadDhtFile(hash);
         if (files == null) {
             files = new Files();
@@ -138,7 +171,6 @@ public class FileDownloadService {
             files.setStatus(FileStatusConstant.DOWNLOAD);
             files.setDhtHash(hash);
             this.filesDao.save(files);
-            addFlag = true;
         } else if (!Objects.equals(files.getFoldId(), foldId) || !Objects.equals(files.getUserId(), userId)) {
             // 不是自己的，或者不在这个目录，那就改成自己的
             Files updateFiles = new Files();
@@ -155,16 +187,30 @@ public class FileDownloadService {
             this.filesDao.save(updateFiles);
             files = updateFiles;
         }
+        return files;
+    }
 
+    @Transactional
+    public Files downloadFromMagnet(String magnet, Integer userId, Long foldId) {
+        // 解析成hash
+        Pattern pattern = Pattern.compile("magnet:\\?xt=urn:btih:([a-zA-Z0-9]+)");
+        Matcher matcher = pattern.matcher(magnet);
+        String hash = null;
+        if (matcher.find()) {
+            hash = matcher.group(1);
+        }
+        if (hash == null) {
+            throw new SimpleBizException("磁力链接不合法");
+        }
+        log.info("开始下载：{}", magnet);
+        Files files = this.buildDhtFile(hash, foldId, userId);
         // 先查询一下，再来做决定
-        if (addFlag) {
-            Map<String, Object> info = this.loadInfo(hash);
-            if (info == null) {
-                Map<String, String> params = Map.of("urls", magnet);
-                String response = this.send(ADD_TORRENT_PATH, params);
-                if (!response.equals("Ok.")) {
-                    throw new SimpleBizException("添加下载任务失败");
-                }
+        Map<String, Object> info = this.loadInfo(hash);
+        if (info == null) {
+            Map<String, String> params = Map.of("urls", magnet);
+            String response = this.send(ADD_TORRENT_PATH, params);
+            if (!response.equals("Ok.")) {
+                throw new SimpleBizException("添加下载任务失败");
             }
         }
 
