@@ -1,0 +1,66 @@
+:root {
+  --title-header-height: 40px;
+  --foot-height: 70px;
+}
+body {
+  margin: 0;
+  padding: 0;
+  background-color: black;
+}
+#video-play {
+  height: 100vh;
+  width: 100vw;
+
+  & .video-title {
+    height: var(--title-header-height);
+    color: white;
+    display: flex;
+    align-items: center;
+    padding-left: 50px;
+  }
+
+  & .video-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100% - var(--title-header-height) - var(--foot-height) - 30px);
+  }
+
+  & .video-control {
+    height: var(--foot-height);
+    background: rgba(40, 40, 40, 0.7);
+    margin: 0 100px;
+    padding: 0 20px;
+    border-radius: 10px;
+
+    display: flex;
+    align-items: center;
+    column-gap: 10px;
+
+    & .btn-play {
+      height: 50%;
+      width: 40px;
+
+      &.play {
+        background: url('/asserts/play_fill.svg') no-repeat center / cover;
+      }
+      &.stop {
+        background: url('/asserts/dtop.svg') no-repeat center / cover;
+      }
+    }
+
+    & .progress-wrapper {
+      width: 100%;
+
+      display: flex;
+      align-items: center;
+
+      & .progress-bg {
+        background-color: white;
+        height: 10px;
+        width: 100%;
+        border-radius: 10px;
+      }
+    }
+  }
+}

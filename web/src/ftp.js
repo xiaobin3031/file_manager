@@ -6,12 +6,7 @@ import { appendAddModal } from '#modules/addModal.js'
 import { appendModifyModal } from '#modules/modifyModal.js'
 import { refreshDirs, loadDirs, getFiles, getSelectedFiles } from '#modules/file.js'
 
-window.addEventListener('resize', () => {
-  resize()
-})
 document.addEventListener('DOMContentLoaded', () => {
-  resize()
-
   loadDirs()
 
   $('#ops > span.back').addEventListener('click', async (e) => {
@@ -96,14 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDirs()
   })
 })
-  
-function resize() {
-    const $root = document.getElementById('root');
-    const height = `${window.innerHeight - 10}px`
-    const width = `${window.innerWidth - 10}px`
-    $root.style.height = height
-    $root.style.width = width
-}
+
 const testDownloadUrl = (e) => {
 
 }

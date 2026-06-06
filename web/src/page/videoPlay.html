@@ -4,18 +4,32 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>video-play</title>
-
-  <script>
-  
-  </script>
+  <link rel="stylesheet" href="../../css/videoPlay.css"/>
 </head>
-
 <body>
 <div id="video-play">
-    <div class="video-container"> 
-        <h2></h2>
+  <div class="video-title">
+    <span></span>
+  </div>
+  <div class="video-container"> 
+    <video></video>
+  </div>
+  <div class="video-control">
+    <button class="btn-play play" type="button"></button>
+    <span class="current-time">00:00</span>
+    <div class="progress-wrapper">
+      <div class="progress-bg"></div>
+      <div class="progress-buffer"></div>
+      <div class="progress-current"></div>
+      <div class="progress-dot"></div>
     </div>
+    <span class="duration">00:00</span>
+    <button class="btn-volumn" type="button"></button>
+    <input class="volumn-silder" type="range" min="0" max="100" value="100" />
+    <button class="btn-fullscreen" type="button"></button>
+  </div>
 </div>
-
 </body>
+<script type="module" src="../../main.js"></script>
+<script type="module" src="../../js/videoPlay.js"></script>
 </html>

@@ -72,8 +72,10 @@ export const buildFileDom = (file) => {
 
 const dblClickFile = async (file) => {
   if(file.fileFlag) {
+    const $a = document.createElement('a')
     if(isVideo(file)) {
       // todo 视频预览
+      window.open(`src/page/videoPlay.html?fileId=${file.id}&name=${file.name}`, "_blank")
     }else if(isImage(file)) {
       // todo 图片预览
     }else if(isPdf(file)) {
