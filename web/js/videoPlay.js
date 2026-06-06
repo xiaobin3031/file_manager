@@ -38,7 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
   $videoList = $('.video-container .video-list', $videoPlay)
   videoControl()
   videoProgress()
+  initImageCrop()
 })
+
+function initImageCrop() {
+
+}
 
 document.addEventListener('mousemove', () => {
   if(!$videoControl || inVideoControl) return
@@ -199,6 +204,7 @@ function videoProgress() {
   $video.addEventListener('loadedmetadata', () => {
     const total = $video.duration
     $('.duration', $videoControl).innerText = parseTime(total)
+    videoPlay()
   })
 
   $video.addEventListener('ended', nextVideo)
@@ -257,5 +263,4 @@ function videoListDom() {
   if(!$domOverlay) {
     $domOverlay = document.createElement('div')
   }
-
 }

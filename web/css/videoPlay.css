@@ -1,6 +1,6 @@
 :root {
   --title-header-height: 40px;
-  --foot-height: 70px;
+  --foot-height: 60px;
   --video-name-height: 30px;
 }
 
@@ -79,23 +79,47 @@ body {
     }
   }
 
+  & .video-footer {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+
+    & > div.gap {
+      width: 100px;
+    }
+
+    & div.video-crop {
+      background: rgba(40, 40, 40, 0.7);
+      width: var(--foot-height);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+
+      & > div {
+        background: url('/asserts/image-crop.svg') no-repeat center / cover;
+        width: 40px;
+        height: 40%;
+      }
+    }
+  }
+
   & .video-control {
+    flex: 1;
     position: relative;
     height: var(--foot-height);
     background: rgba(40, 40, 40, 0.7);
-    margin: 0 100px;
     padding: 0 20px;
     border-radius: 10px;
+    width: 100%;
 
     display: flex;
     align-items: center;
     column-gap: 10px;
 
-    &.hide {
-    }
-
     & > .btn {
-      height: 50%;
+      height: 40%;
       width: 40px;
       cursor: pointer;
       border-style: none;
