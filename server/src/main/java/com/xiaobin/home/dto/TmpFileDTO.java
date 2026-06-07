@@ -11,6 +11,11 @@ public class TmpFileDTO {
 
     private String referer;
 
+    /**
+     * 文件夹名称
+     */
+    private List<String> foldNames;
+
     private List<Data> items;
 
     @Getter

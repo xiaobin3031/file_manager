@@ -10,6 +10,8 @@ public class FileStatusConstant {
 
     public static final short DOWNLOAD = 20;
 
+    public static final short DOWNLOAD_DIRECT = 21;
+
     public static boolean isFree(Short status) {
         return status == null || status == INIT;
     }
@@ -27,7 +29,7 @@ public class FileStatusConstant {
             case INIT -> "初始化";
             case UNZIP -> "解压中";
             case UPLOAD -> "上传中";
-            case DOWNLOAD -> "下载中";
+            case DOWNLOAD, DOWNLOAD_DIRECT -> "下载中";
             default -> "未知";
         };
     }

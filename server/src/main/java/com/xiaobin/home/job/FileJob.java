@@ -2,7 +2,6 @@ package com.xiaobin.home.job;
 
 import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.entity.Files;
-import com.xiaobin.home.entity.Folds;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.FoldsDao;
 import com.xiaobin.home.service.FileDownloadPlanService;
@@ -67,6 +66,12 @@ public class FileJob {
         pageQueryService.query();
     }
 
+//    @Scheduled(fixedDelay = 1L)
+    @Scheduled(cron = "0 0 0/1 * * ?")
+    public void downloadDirect() {
+        this.fileDownloadService.downloadDirectBatch();
+    }
+
     @Scheduled(cron = "0 30 0 * * ?")
     public void doDownloadPlan() {
         this.fileDownloadPlanService.planDownloadList();
@@ -77,10 +82,4 @@ public class FileJob {
 //        this.filesDao.loadFilesByFileType();
     }
 
-//    @Scheduled(cron = "0 0 0/1 * * ?")
-    @Scheduled(fixedDelay = 1L)
-    public void downloadFold() {
-        List<Folds> toDownloadFolds = this.foldsDao.findByStatusAndDeletedFalseAndHostUrlIsNotNull(FileStatusConstant.DOWNLOAD);
-        this.fileDownloadPlanService.downloadFolds(toDownloadFolds);
-    }
 }

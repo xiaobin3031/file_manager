@@ -29,9 +29,6 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
 import java.net.URLConnection;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -1008,8 +1005,12 @@ public class FileService {
         return tmp;
     }
 
+    @Transactional
     public void addTmpFile(TmpFileDTO dto, Integer userId) {
         Folds tmp = this.loadTmpFold(userId);
+        for (String foldName : dto.getFoldNames()) {
+            tmp = this.addFold(foldName, tmp.getId(), userId);
+        }
         File targetFold = new File(this.getRootPath(), String.valueOf(tmp.getId()));
         if (!targetFold.exists()) {
             if (!targetFold.mkdirs()) {
@@ -1018,35 +1019,26 @@ public class FileService {
             }
         }
 
-        try (HttpClient CLIENT = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()) {
-            for (TmpFileDTO.Data tmpFile : dto.getItems()) {
-                if (StringUtils.isEmpty(tmpFile.getUrl())) continue;
+        URI uri = URI.create(dto.getReferer());
+        String referer = "%s://%s/".formatted(uri.getScheme(), uri.getHost());
+        for (TmpFileDTO.Data tmpFile : dto.getItems()) {
+            if (StringUtils.isEmpty(tmpFile.getUrl())) continue;
 
-                String filename = tmpFile.getFileName();
-                if (StringUtils.isEmpty(filename)) {
-                    filename = tmpFile.getUrl().substring(tmpFile.getUrl().lastIndexOf("/") + 1);
-                }
-                File targetFile = new File(targetFold, filename);
-                if (!targetFile.exists()) {
-                    HttpRequest request = HttpRequest.newBuilder()
-                            .uri(URI.create(tmpFile.getUrl()))
-                            .header("Referer", dto.getReferer())
-                            .header("User-Agent", "Mozilla/5.0")
-                            .GET()
-                            .build();
-
-                    try {
-                        CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(targetFile.toPath()));
-                    } catch (Exception e) {
-                        throw new SimpleBizException("文件[" + tmpFile.getUrl() + "]下载失败: " + e.getMessage());
-                    }
-
-                    if (!targetFile.exists()) continue;
-                }
+            String filename = tmpFile.getFileName();
+            if (StringUtils.isEmpty(filename)) {
+                filename = tmpFile.getUrl().substring(tmpFile.getUrl().lastIndexOf("/") + 1);
+            }
+            File targetFile = new File(targetFold, filename);
+            if (targetFile.exists()) {
                 this.addFile(tmp.getId(), targetFile, userId);
+            } else {
+                Files newFiles = this.buildFiles(tmp.getId(), filename, 0L, targetFile.getAbsolutePath(), userId);
+                newFiles.setHostUrl(tmpFile.getUrl());
+                newFiles.setStatus(FileStatusConstant.DOWNLOAD_DIRECT);
+                newFiles.setReferer(referer);
+                this.filesDao.save(newFiles);
             }
         }
-
-
     }
+
 }

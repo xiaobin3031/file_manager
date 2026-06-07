@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 
 /**
  * 分页查询服务
+ *
  * @param <T> 数据类型
  */
 @Setter
@@ -17,11 +18,20 @@ public class PageQueryService<T> {
     private BiFunction<T, Long, Long> idMapper;
     private Consumer<T> queryEnd;
     private int size = 1000;
+    /**
+     * 查询条数为0时才推出
+     */
+    private boolean exitOnZero;
 
-    public PageQueryService() {}
+    public PageQueryService() {
+    }
 
     public PageQueryService(int size) {
         this.size = size;
+    }
+
+    public void setExitOnZero() {
+        this.exitOnZero = true;
     }
 
     public void query() {
@@ -29,9 +39,9 @@ public class PageQueryService<T> {
         assert idMapper != null;
 
         long minId = 0;
-        while(true) {
+        while (true) {
             List<T> list = mapper.apply(minId, size);
-            if(list.isEmpty()) {
+            if (list.isEmpty()) {
                 break;
             }
 
@@ -39,11 +49,11 @@ public class PageQueryService<T> {
                 minId = idMapper.apply(t, minId);
             }
 
-            if(list.size() < size) {
+            if (!exitOnZero && list.size() < size) {
                 break;
             }
         }
-        if(queryEnd != null) {
+        if (queryEnd != null) {
             this.queryEnd.accept(null);
         }
     }

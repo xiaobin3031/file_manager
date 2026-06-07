@@ -59,7 +59,7 @@ const buildAddModalBody = () => {
   $body.innerHTML = bodyText
 
   $('.tab-1 > input', $body).addEventListener('keyup', async (e) => {
-    if(is_enter(e, {ctrl: true})) {
+    if(is_enter(e, {})) {
       let val = e.target.value
       if(!val || !val.trim()) {
         return

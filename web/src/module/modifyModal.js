@@ -1,11 +1,11 @@
 import { $, $$ } from '#utils/dom.js'
 import { request } from '#utils/request.js'
-import { getFiles } from '#modules/file.js'
+import { getFiles, getSelectedFiles } from '#modules/file.js'
 import { showModal, hideModal } from '#components/modal.js'
 
 let $modal = null
 
-const buildModifyModalBody = (selectedFiles) => {
+const buildModifyModalBody = () => {
   const $body = document.createElement('div')
   $body.id = 'file-modify-body'
   
@@ -35,6 +35,7 @@ const buildModifyModalBody = (selectedFiles) => {
   `
   $body.innerHTML = bodyText
 
+  const {selectedFiles} = getSelectedFiles()
   $('.replace-table tbody', $body).innerHTML = selectedFiles.map(ff => {
     return `
       <tr data-id="${ff.id}">
@@ -92,14 +93,15 @@ const buildModifyModalFooter = ($modalBody) => {
         method: "POST",
         body: list
       })
+      const {selectedFiles} = getSelectedFiles()
       for(let item of list) {
-        currentFiles.filter(ff => item.id === ff.id)[0].name = item.newName
+        selectedFiles.filter(ff => item.id === ff.id)[0].name = item.newName
         $(`.file-item[data-file-id="${item.id}"] .file-name`).innerText = item.newName
       }
       const { $selectedItems } = getSelectedFiles()
       $selectedItems.forEach($item => $item.classList.remove('selected'))
     }
-    hideModal($modals.pop())
+    hideModal($modal)
   })
   return $foot
 }

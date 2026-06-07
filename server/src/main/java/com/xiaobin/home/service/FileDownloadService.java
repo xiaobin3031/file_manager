@@ -52,6 +52,10 @@ public class FileDownloadService {
     private static final String INFO_PATH = "/api/v2/torrents/info";
     private static final String DELETE_PATH = "/api/v2/torrents/delete";
     private static final HttpHeaders httpHeaders = new HttpHeaders();
+    private static final HttpClient CLIENT = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+
+    private static final Object downloadLock = new Object();
+    private static boolean downloading = false;
 
     static {
         httpHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -296,6 +300,51 @@ public class FileDownloadService {
             // 更新文件名称
             files.setName(fileName);
             this.filesDao.save(files);
+        }
+    }
+
+    public void downloadDirectBatch() {
+        if (downloading) return;
+        synchronized (downloadLock) {
+            if (downloading) return;
+            downloading = true;
+        }
+        try {
+            PageQueryService<Files> pageQueryService = new PageQueryService<>(500);
+            pageQueryService.setExitOnZero();
+            pageQueryService.setMapper((minId, size) -> this.filesDao.loadSpecialStatusFiles(minId, size, FileStatusConstant.DOWNLOAD_DIRECT));
+            pageQueryService.setIdMapper((files, minId) -> {
+                try {
+                    this.downloadDirect(files);
+                } catch (Exception e) {
+                    log.error("文件[{}]下载结果失败: {}", files.getId(), e.getMessage(), e);
+                }
+                return Math.max(minId, files.getId());
+            });
+            pageQueryService.query();
+            log.info("图片图片加载完毕");
+        } finally {
+            downloading = false;
+        }
+    }
+
+    private void downloadDirect(Files files) {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(files.getHostUrl()))
+                .header("Referer", files.getReferer())
+                .header("User-Agent", "Mozilla/5.0")
+                .GET()
+                .build();
+
+        try {
+            File targetFile = new File(files.getStoragePath());
+            CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(targetFile.toPath()));
+            files.setStatus(FileStatusConstant.INIT);
+            files.setHostUrl(null);
+            this.filesDao.save(files);
+            this.fileService.saveSample(files);
+        } catch (Exception e) {
+            throw new SimpleBizException("文件[" + files.getHostUrl() + "]下载失败: " + e.getMessage());
         }
     }
 }

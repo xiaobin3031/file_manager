@@ -430,8 +430,9 @@ public class FtpController {
      */
     @PostMapping("/addTmpFile")
     public ApiResponse addTmpFile(@RequestBody TmpFileDTO dto) {
-        if (!CollectionUtils.isEmpty(dto.getItems())) {
+        if (!CollectionUtils.isEmpty(dto.getItems()) && !CollectionUtils.isEmpty(dto.getFoldNames())) {
             this.fileService.addTmpFile(dto, 1);
+            CompletableFuture.runAsync(() -> this.fileDownloadService.downloadDirectBatch());
         }
         return ApiResponse.ok();
     }

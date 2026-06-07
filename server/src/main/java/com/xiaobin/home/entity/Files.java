@@ -46,4 +46,8 @@ public class Files {
     private Boolean removed;
 
     private String dhtHash;
+
+    private String hostUrl;
+
+    private String referer;
 }
