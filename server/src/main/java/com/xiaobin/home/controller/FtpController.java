@@ -18,6 +18,7 @@ import com.xiaobin.home.service.LoginService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -421,6 +422,17 @@ public class FtpController {
 
     @PostMapping("/migrateFiles")
     public ApiResponse migrateFiles() {
+        return ApiResponse.ok();
+    }
+
+    /**
+     * 这是给外部接口用的，暂时获取不到登录信息
+     */
+    @PostMapping("/addTmpFile")
+    public ApiResponse addTmpFile(@RequestBody TmpFileDTO dto) {
+        if (!CollectionUtils.isEmpty(dto.getItems())) {
+            this.fileService.addTmpFile(dto, 1);
+        }
         return ApiResponse.ok();
     }
 }

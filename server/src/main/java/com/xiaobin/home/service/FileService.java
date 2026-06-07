@@ -4,6 +4,7 @@ import com.xiaobin.home.config.FtpConfig;
 import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.dto.FtpDirsDTO;
 import com.xiaobin.home.dto.FtpRequestDTO;
+import com.xiaobin.home.dto.TmpFileDTO;
 import com.xiaobin.home.dto.login.UserFtpCache;
 import com.xiaobin.home.entity.DictManager;
 import com.xiaobin.home.entity.Files;
@@ -15,6 +16,7 @@ import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.FoldsDao;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +27,14 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URI;
 import java.net.URLConnection;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -993,5 +998,55 @@ public class FileService {
             ftpDirsDTO.setSort(file.getSort());
             list.add(ftpDirsDTO);
         }
+    }
+
+    private Folds loadTmpFold(Integer userId) {
+        Folds tmp = this.foldsDao.loadFoldsByNameInFold("tmp", 0L, userId);
+        if (tmp == null) {
+            throw new SimpleBizException("no tmp directory");
+        }
+        return tmp;
+    }
+
+    public void addTmpFile(TmpFileDTO dto, Integer userId) {
+        Folds tmp = this.loadTmpFold(userId);
+        File targetFold = new File(this.getRootPath(), String.valueOf(tmp.getId()));
+        if (!targetFold.exists()) {
+            if (!targetFold.mkdirs()) {
+                log.error("创建目录: {} 失败", targetFold.getAbsoluteFile());
+                return;
+            }
+        }
+
+        try (HttpClient CLIENT = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()) {
+            for (TmpFileDTO.Data tmpFile : dto.getItems()) {
+                if (StringUtils.isEmpty(tmpFile.getUrl())) continue;
+
+                String filename = tmpFile.getFileName();
+                if (StringUtils.isEmpty(filename)) {
+                    filename = tmpFile.getUrl().substring(tmpFile.getUrl().lastIndexOf("/") + 1);
+                }
+                File targetFile = new File(targetFold, filename);
+                if (!targetFile.exists()) {
+                    HttpRequest request = HttpRequest.newBuilder()
+                            .uri(URI.create(tmpFile.getUrl()))
+                            .header("Referer", dto.getReferer())
+                            .header("User-Agent", "Mozilla/5.0")
+                            .GET()
+                            .build();
+
+                    try {
+                        CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(targetFile.toPath()));
+                    } catch (Exception e) {
+                        throw new SimpleBizException("文件[" + tmpFile.getUrl() + "]下载失败: " + e.getMessage());
+                    }
+
+                    if (!targetFile.exists()) continue;
+                }
+                this.addFile(tmp.getId(), targetFile, userId);
+            }
+        }
+
+
     }
 }
