@@ -1,6 +1,9 @@
 package com.xiaobin.home.service;
 
+import com.xiaobin.home.entity.FileDownloadConfig;
 import com.xiaobin.home.entity.FileDownloadPlan;
+import com.xiaobin.home.entity.Folds;
+import com.xiaobin.home.repository.FileDownloadConfigDao;
 import com.xiaobin.home.repository.FileDownloadPlanDao;
 import lombok.extern.slf4j.Slf4j;
 import org.htmlcleaner.DomSerializer;
@@ -18,6 +21,8 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -33,6 +38,8 @@ public class FileDownloadPlanService {
     private FileDownloadPlanDao fileDownloadPlanDao;
     @Autowired
     private FileDownloadService fileDownloadService;
+    @Autowired
+    private FileDownloadConfigDao fileDownloadConfigDao;
 
     public void planDownloadList() {
         List<FileDownloadPlan> planList = this.fileDownloadPlanDao.findByFinishAndDeletedFalse(false);
@@ -51,7 +58,7 @@ public class FileDownloadPlanService {
         // 2. 使用 Java URL 读取网页内容
         String html = null;
         try {
-            URL url = new URL(urlString);
+            URL url = URI.create(urlString).toURL();
             try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8))) {
                 StringBuilder htmlBuilder = new StringBuilder();
                 String inputLine;
@@ -67,22 +74,31 @@ public class FileDownloadPlanService {
         return html;
     }
 
-    public void planDownload(FileDownloadPlan plan) throws ParserConfigurationException, XPathExpressionException {
-
-        String html = this.loadHtmlFromUrl(plan.getUrl());
-        if (html == null) return;
+    private NodeList loadHtml(String url, String xpathExp) {
+        String html = this.loadHtmlFromUrl(url);
+        if (html == null) return null;
 
         // 3. 使用 HtmlCleaner 解析 HTML
         HtmlCleaner cleaner = new HtmlCleaner();
         TagNode rootNode = cleaner.clean(html);
 
-        // 4. 转换为 DOM，用于 XPath 查询
-        Document dom = new DomSerializer(cleaner.getProperties(), true).createDOM(rootNode);
+        try {
+            // 4. 转换为 DOM，用于 XPath 查询
+            Document dom = new DomSerializer(cleaner.getProperties(), true).createDOM(rootNode);
 
-        // 5. XPath 查询示例
-        XPath xpath = XPathFactory.newInstance().newXPath();
+            // 5. XPath 查询示例
+            XPath xpath = XPathFactory.newInstance().newXPath();
 
-        NodeList nodes = (NodeList) xpath.evaluate(plan.getXpathExpression(), dom, XPathConstants.NODESET);
+            return (NodeList) xpath.evaluate(xpathExp, dom, XPathConstants.NODESET);
+        } catch (Exception e) {
+            log.info("xpath解析失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public void planDownload(FileDownloadPlan plan) throws ParserConfigurationException, XPathExpressionException {
+        NodeList nodes = this.loadHtml(plan.getUrl(), plan.getXpathExpression());
+        if (nodes == null) return;
 
         List<String> magnetList = new ArrayList<>();
         for (int i = 0; i < nodes.getLength(); i++) {
@@ -122,5 +138,28 @@ public class FileDownloadPlanService {
                 }
             }
         }
+    }
+
+    public void downloadFolds(List<Folds> foldList) {
+        for (Folds folds : foldList) {
+            try {
+                String host = URI.create(folds.getHostUrl()).toURL().getHost();
+                FileDownloadConfig config = this.fileDownloadConfigDao.findFirstByHost(host).orElse(null);
+                if (config == null) continue;
+                if(config.getListXpath() != null) {
+                    NodeList listNodes = this.loadHtml(folds.getHostUrl(), config.getListXpath());
+                    if(listNodes != null) {
+
+                    }
+                }
+
+            } catch (MalformedURLException e) {
+                log.error("下载失败: {}, host: {}", folds.getId(), folds.getHostUrl());
+            }
+        }
+    }
+
+    private void downloadFromItem() {
+
     }
 }

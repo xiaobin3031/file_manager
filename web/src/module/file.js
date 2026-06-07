@@ -58,3 +58,17 @@ export const getSelectedFiles = () => {
       "$selectedItems": $selectedItems
   }
 }
+
+export const changeCheckOpsStatus = () => {
+    const selectedCount = $$('#app div.file-item.selected').length
+    if(selectedCount === 0) {
+        $('#ops > span.check').classList.remove('check-checked', 'check-part')   
+    }else if(selectedCount === $$('#app div.file-item').length) {
+        $('#ops > span.check').classList.add('check-checked')
+        $('#ops > span.check').classList.remove('check-part')
+    }else if(selectedCount > 0) {
+        $('#ops > span.check').classList.remove('check-checked')
+        $('#ops > span.check').classList.add('check-part')
+    }
+}
+

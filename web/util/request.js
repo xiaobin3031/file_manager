@@ -55,35 +55,40 @@ export async function request(url, options = {}) {
 
 
 export async function uploadFile(file, onProgress) {
-    const total = file.size
-    const totalChunks = Math.ceil(total / CHUNK_SIZE)
-    let {currentChunk, uploadId} = await request('/file-upload/init', {
-        method: 'POST',
-        body: {
-            totalChunks,
-            fileName: file.name,
-            totalSize: total
-        }
-    })
-
-    while(currentChunk <= totalChunks) {
-        const start = currentChunk * CHUNK_SIZE
-        const end = Math.min(start + CHUNK_SIZE, total)
-        if(start >= end) break
-        const blob = file.slice(start, end)
-        const formData = new FormData()
-        formData.append('file', blob)
-        formData.append('fileId', uploadId);
-        formData.append('currentChunk', currentChunk + "");
-        formData.append('totalChunks', totalChunks + "");
-
-        const res = await uploadFileChunk(formData, onProgress, currentChunk, totalChunks)
-        if(res === 1) {
-            currentChunk++
-        }else{
-            throw new Error('上传失败')
-        }
+  const total = file.size
+  const totalChunks = Math.ceil(total / CHUNK_SIZE)
+  let {currentChunk, uploadId} = await request('/file-upload/init', {
+    method: 'POST',
+    body: {
+      totalChunks,
+      fileName: file.name,
+      totalSize: total
     }
+  })
+
+  while(currentChunk <= totalChunks) {
+    const start = currentChunk * CHUNK_SIZE
+    const end = Math.min(start + CHUNK_SIZE, total)
+    if(start >= end) break
+    const blob = file.slice(start, end)
+    const formData = new FormData()
+    formData.append('file', blob)
+    formData.append('fileId', uploadId);
+    formData.append('currentChunk', currentChunk + "");
+    formData.append('totalChunks', totalChunks + "");
+
+    const res = await uploadFileChunk(formData, onProgress, currentChunk, totalChunks)
+    if(res === 1) {
+      currentChunk++
+    }else{
+      throw new Error('上传失败')
+    }
+  }
+
+  await request('/file-upload/finish', {
+    method: "POST",
+    body: {fileId: uploadId}
+  })
 }
 
 async function uploadFileChunk(formData, onProgress, currentChunk, totalChunks) {

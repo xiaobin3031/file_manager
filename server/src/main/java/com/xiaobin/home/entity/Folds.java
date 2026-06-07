@@ -38,4 +38,8 @@ public class Folds {
     private Boolean physics;
 
     private Integer sort;
+
+    private String hostUrl;
+
+    private Short status;
 }

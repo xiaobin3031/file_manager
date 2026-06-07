@@ -6,20 +6,7 @@
   <title>Vite + React</title>
   <link rel="stylesheet" href="/src/ftp.css"/>
 </head>
-<script>
-  window.onresize = function () {
-    resize();
-  };
-  
-  function resize() {
-    const $root = document.getElementById('root');
-    const height = `${window.innerHeight - 10}px`
-    const width = `${window.innerWidth - 10}px`
-    $root.style.height = height
-    $root.style.width = width
-  }
-</script>
-<body onload="resize()">
+<body>
 <header>
   <div id="ops">
     <span class="back"></span>

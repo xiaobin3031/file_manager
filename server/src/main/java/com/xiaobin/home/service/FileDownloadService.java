@@ -7,6 +7,7 @@ import com.xiaobin.home.config.FtpConfig;
 import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.entity.Files;
 import com.xiaobin.home.exception.SimpleBizException;
+import com.xiaobin.home.repository.FileDownloadConfigDao;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.LogsDao;
 import com.xiaobin.home.util.TorrentHashUtil;
@@ -24,17 +25,13 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.xml.crypto.dsig.SignatureProperties;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.CookieManager;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Path;
-import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +69,8 @@ public class FileDownloadService {
     private ObjectMapper mapper;
     @Autowired
     private LogsDao logsDao;
+    @Autowired
+    private FileDownloadConfigDao fileDownloadConfigDao;
 
     private void login() {
         log.info("开始登录");

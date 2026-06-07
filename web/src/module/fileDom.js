@@ -1,5 +1,5 @@
 import { $, $$ } from '#utils/dom.js'
-import { getFiles, refreshDirs } from '#modules/file.js'
+import { getFiles, refreshDirs, changeCheckOpsStatus } from '#modules/file.js'
 import { request, baseUrl } from '#utils/request.js'
 
 export const buildFileDom = (file) => {

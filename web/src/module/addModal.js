@@ -140,6 +140,7 @@ const buildAddModalBody = () => {
     }
 
     loadDirs()
+    hideModal($modal)
   })
 
   $('.tab-3 textarea', $body).addEventListener('keyup', async (e) => {

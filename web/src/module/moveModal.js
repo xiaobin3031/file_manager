@@ -1,10 +1,13 @@
 import { $, $$ } from '#utils/dom.js'
 import { request } from '#utils/request.js'
+import { showModal, hideModal } from '#components/modal.js'
+import { getSelectedFiles } from '#modules/file.js'
 
 let $modal = null
 
-export const appendMoveModal = () => {
-  $modal = showModal('迁移', buildMoveModalBody(), null)
+export const appendMoveModal = async () => {
+  const $body = await buildMoveModalBody()
+  $modal = showModal('迁移', $body, null)
 }
 
 const buildMoveModalBody = async () => {

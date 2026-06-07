@@ -2,7 +2,9 @@ package com.xiaobin.home.job;
 
 import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.entity.Files;
+import com.xiaobin.home.entity.Folds;
 import com.xiaobin.home.repository.FilesDao;
+import com.xiaobin.home.repository.FoldsDao;
 import com.xiaobin.home.service.FileDownloadPlanService;
 import com.xiaobin.home.service.FileDownloadService;
 import com.xiaobin.home.service.FileService;
@@ -26,6 +28,8 @@ public class FileJob {
     private FileDownloadService fileDownloadService;
     @Autowired
     private FileDownloadPlanService fileDownloadPlanService;
+    @Autowired
+    private FoldsDao foldsDao;
 
     /**
      * 转换指定格式到mp4
@@ -42,7 +46,6 @@ public class FileJob {
     }
 
     @Scheduled(cron = "0 0 0/1 * * ?")
-//    @Scheduled(fixedDelay = 1L)
     public void signDeleteInDeletedFold() {
         this.fileService.signDeleteInDeletedFold();
         this.fileService.deletePhysicalFile();
@@ -69,8 +72,15 @@ public class FileJob {
         this.fileDownloadPlanService.planDownloadList();
     }
 
-//    @Scheduled(cron = "0 0 0 1 * ?")
+    //    @Scheduled(cron = "0 0 0 1 * ?")
     public void removePreviewImage() {
 //        this.filesDao.loadFilesByFileType();
+    }
+
+//    @Scheduled(cron = "0 0 0/1 * * ?")
+    @Scheduled(fixedDelay = 1L)
+    public void downloadFold() {
+        List<Folds> toDownloadFolds = this.foldsDao.findByStatusAndDeletedFalseAndHostUrlIsNotNull(FileStatusConstant.DOWNLOAD);
+        this.fileDownloadPlanService.downloadFolds(toDownloadFolds);
     }
 }

@@ -43,4 +43,6 @@ public interface FoldsDao extends JpaRepository<Folds, Long> {
     @Transactional
     @Query("update Folds set parentId = :curFoldId where parentId != 0 and parentId = :id and userId = :userId and deleted = false")
     void changeFold(Long curFoldId, Long id, Integer userId);
+
+    List<Folds> findByStatusAndDeletedFalseAndHostUrlIsNotNull(Short status);
 }

@@ -4,7 +4,8 @@ import { is_enter } from '#utils/key_event.js'
 import { buildFileDom } from '#modules/fileDom.js'
 import { appendAddModal } from '#modules/addModal.js'
 import { appendModifyModal } from '#modules/modifyModal.js'
-import { refreshDirs, loadDirs, getFiles, getSelectedFiles } from '#modules/file.js'
+import { appendMoveModal } from '#modules/moveModal.js'
+import { refreshDirs, loadDirs, getFiles, getSelectedFiles, changeCheckOpsStatus } from '#modules/file.js'
 
 document.addEventListener('DOMContentLoaded', () => {
   loadDirs()
@@ -94,18 +95,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const testDownloadUrl = (e) => {
 
-}
-
-const changeCheckOpsStatus = () => {
-    const selectedCount = $$('#app div.file-item.selected').length
-    if(selectedCount === 0) {
-        $('#ops > span.check').classList.remove('check-checked', 'check-part')   
-    }else if(selectedCount === $$('#app div.file-item').length) {
-        $('#ops > span.check').classList.add('check-checked')
-        $('#ops > span.check').classList.remove('check-part')
-    }else if(selectedCount > 0) {
-        $('#ops > span.check').classList.remove('check-checked')
-        $('#ops > span.check').classList.add('check-part')
-    }
 }
 

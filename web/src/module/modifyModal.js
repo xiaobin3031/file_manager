@@ -1,6 +1,7 @@
 import { $, $$ } from '#utils/dom.js'
 import { request } from '#utils/request.js'
 import { getFiles } from '#modules/file.js'
+import { showModal, hideModal } from '#components/modal.js'
 
 let $modal = null
 
