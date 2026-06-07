@@ -450,7 +450,7 @@ public class FileService {
                     movePhysicsFile(srcFile, toFoldId, userId);
                 } else if (srcFile.isDirectory()) {
                     log.info("src file is fold: {}", srcFile.getAbsolutePath());
-                    Long parentId = addFold(srcFile.getName(), toFoldId, userId);
+                    Long parentId = addFold(srcFile.getName(), toFoldId, userId).getId();
                     movePhysicsDir(parentId, srcFile, userId);
                 }
             }
@@ -491,7 +491,7 @@ public class FileService {
                     if (file.isFile()) {
                         movePhysicsFile(file, toFoldId, userId);
                     } else if (file.isDirectory()) {
-                        Long parentId = addFold(file.getName(), toFoldId, userId);
+                        Long parentId = addFold(file.getName(), toFoldId, userId).getId();
                         movePhysicsDir(parentId, file, userId);
                     }
                 }
@@ -578,7 +578,7 @@ public class FileService {
         }
     }
 
-    public Long addFold(String name, Long parentId, Integer userId) {
+    public Folds addFold(String name, Long parentId, Integer userId) {
         Folds fold = this.foldsDao.loadFoldsByNameInFold(name, parentId, userId);
         if (fold == null) {
             fold = new Folds();
@@ -596,7 +596,7 @@ public class FileService {
                 }
             }
         }
-        return fold.getId();
+        return fold;
     }
 
     @Transactional
@@ -700,7 +700,7 @@ public class FileService {
                 log.error("文件夹[{}] 创建失败", dir.getAbsolutePath());
                 return;
             }
-            Long foldId = addFold(dir.getName(), curFoldId, userId);
+            Long foldId = addFold(dir.getName(), curFoldId, userId).getId();
 
             // 构建 unzip 命令（注意：-O 可能不是所有 unzip 都支持）
             String[] command = {
@@ -773,7 +773,7 @@ public class FileService {
         if (files != null) {
             for (File file : files) {
                 if (file.isDirectory()) {
-                    Long subFoldId = addFold(file.getName(), foldId, userId);
+                    Long subFoldId = addFold(file.getName(), foldId, userId).getId();
                     storePhysicsFiles(file, subFoldId, userId);
                 } else if (file.isFile()) {
                     addFile(foldId, file, userId);

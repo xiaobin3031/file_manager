@@ -1,9 +1,6 @@
 package com.xiaobin.home.service;
 
-import com.xiaobin.home.entity.FileDownloadConfig;
 import com.xiaobin.home.entity.FileDownloadPlan;
-import com.xiaobin.home.entity.Folds;
-import com.xiaobin.home.repository.FileDownloadConfigDao;
 import com.xiaobin.home.repository.FileDownloadPlanDao;
 import lombok.extern.slf4j.Slf4j;
 import org.htmlcleaner.DomSerializer;
@@ -20,11 +17,16 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -38,8 +40,6 @@ public class FileDownloadPlanService {
     private FileDownloadPlanDao fileDownloadPlanDao;
     @Autowired
     private FileDownloadService fileDownloadService;
-    @Autowired
-    private FileDownloadConfigDao fileDownloadConfigDao;
 
     public void planDownloadList() {
         List<FileDownloadPlan> planList = this.fileDownloadPlanDao.findByFinishAndDeletedFalse(false);
@@ -140,26 +140,24 @@ public class FileDownloadPlanService {
         }
     }
 
-    public void downloadFolds(List<Folds> foldList) {
-        for (Folds folds : foldList) {
-            try {
-                String host = URI.create(folds.getHostUrl()).toURL().getHost();
-                FileDownloadConfig config = this.fileDownloadConfigDao.findFirstByHost(host).orElse(null);
-                if (config == null) continue;
-                if(config.getListXpath() != null) {
-                    NodeList listNodes = this.loadHtml(folds.getHostUrl(), config.getListXpath());
-                    if(listNodes != null) {
+    public static void main(String[] args) throws ParserConfigurationException, XPathExpressionException, IOException, InterruptedException {
+        HttpClient CLIENT = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://biccam.com/chapters/106111/1-51122f.jpg"))
+                .header("Referer", "https://mycomic.com/")
+                .header("User-Agent", "Mozilla/5.0")
+                .GET()
+                .build();
 
-                    }
-                }
+        File file = new File("a.jpg");
+        HttpResponse<Path> response = CLIENT.send(
+                request,
+                HttpResponse.BodyHandlers.ofFile(file.toPath())
+        );
 
-            } catch (MalformedURLException e) {
-                log.error("下载失败: {}, host: {}", folds.getId(), folds.getHostUrl());
-            }
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("下载失败: " + response.statusCode());
         }
     }
 
-    private void downloadFromItem() {
-
-    }
 }

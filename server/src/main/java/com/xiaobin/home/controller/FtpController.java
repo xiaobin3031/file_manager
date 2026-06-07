@@ -17,7 +17,6 @@ import com.xiaobin.home.service.FileService;
 import com.xiaobin.home.service.LoginService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tomcat.util.http.ResponseUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -238,7 +237,7 @@ public class FtpController {
         if (StringUtils.hasText(dto.getDirName())) {
             UserFtpCache ftpCache = this.loginService.getFtpCache();
             if (!ftpCache.isPhysicsFlag()) {
-                Long foldId = this.fileService.addFold(dto.getDirName(), ftpCache.currentFoldId(), this.loginService.getLoginId());
+                Long foldId = this.fileService.addFold(dto.getDirName(), ftpCache.currentFoldId(), this.loginService.getLoginId()).getId();
                 return ApiResponse.ok(foldId);
             }
         }

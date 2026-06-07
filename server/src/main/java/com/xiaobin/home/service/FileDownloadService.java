@@ -280,7 +280,7 @@ public class FileDownloadService {
                         this.filesDao.save(files);
                         CompletableFuture.runAsync(() -> this.fileService.saveSample(files));
                     } else if (srcFile.isDirectory()) {
-                        Long newFoldId = this.fileService.addFold(srcFile.getName(), files.getFoldId(), files.getUserId());
+                        Long newFoldId = this.fileService.addFold(srcFile.getName(), files.getFoldId(), files.getUserId()).getId();
                         this.fileService.movePhysicsDir(newFoldId, srcFile, files.getUserId());
                         files.setDeleted(true);
                         files.setDeleteAt(LocalDateTime.now());
