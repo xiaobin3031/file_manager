@@ -24,6 +24,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.xml.crypto.dsig.SignatureProperties;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +34,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +78,7 @@ public class FileDownloadService {
         FtpConfig.Qbittorrent qbittorrent = this.ftpConfig.getQbittorrent();
         HttpEntity<MultiValueMap<String, String>> req = this.buildReqForm(Map.of("username", qbittorrent.getUsername(), "password", qbittorrent.getPassword()));
         ResponseEntity<String> response = this.restTemplate.postForEntity(qbittorrent.getUrlPrefix() + LOGIN_PATH, req, String.class);
-        if (response.getBody() == null || !response.getBody().equals("Ok.")) {
+        if (response.getBody() == null || !isOk(response.getBody())) {
             throw new SimpleBizException("登录失败");
         }
         log.info("登录结果: {}", response.getBody());
@@ -85,6 +87,10 @@ public class FileDownloadService {
         if (!CollectionUtils.isEmpty(cookies)) {
             httpHeaders.addAll("Cookie", cookies);
         }
+    }
+
+    private boolean isOk(String body) {
+        return "Ok.".equals(body);
     }
 
     private HttpEntity<MultiValueMap<String, String>> buildReqForm(Map<String, String> params) {
@@ -106,26 +112,35 @@ public class FileDownloadService {
         return response.getBody();
     }
 
-    private void uploadTorrent(String path, byte[] torrentBytes, String filename) throws IOException, InterruptedException {
-        String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        bos.write(("--" + boundary + "\r\n").getBytes());
-        bos.write(("Content-Disposition: form-data; name=\"torrents\"; filename=\"" + filename + "\"\r\n").getBytes());
-        bos.write("Content-Type: application/x-bittorrent\r\n\r\n".getBytes());
-        bos.write(torrentBytes);
-        bos.write("\r\n".getBytes());
-        bos.write(("--" + boundary + "--\r\n").getBytes());
-        HttpRequest uploadReq = HttpRequest.newBuilder()
-                .uri(URI.create(ftpConfig.getQbittorrent().getUrlPrefix() + path))
-                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .POST(HttpRequest.BodyPublishers.ofByteArray(bos.toByteArray()))
-                .build();
+    private void uploadTorrent(String path, byte[] torrentBytes, String filename) {
+        this.login();
 
         try (HttpClient client = HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NORMAL)
-                .cookieHandler(new CookieManager())
                 .build()) {
-            client.send(uploadReq, HttpResponse.BodyHandlers.ofString());
+            String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            bos.write(("--" + boundary + "\r\n").getBytes());
+            bos.write(("Content-Disposition: form-data; name=\"torrents\"; filename=\"" + filename + "\"\r\n").getBytes());
+            bos.write("Content-Type: application/x-bittorrent\r\n\r\n".getBytes());
+            bos.write(torrentBytes);
+            bos.write("\r\n".getBytes());
+            bos.write(("--" + boundary + "--\r\n").getBytes());
+            HttpRequest uploadReq = HttpRequest.newBuilder()
+                    .uri(URI.create(ftpConfig.getQbittorrent().getUrlPrefix() + path))
+                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .header("Cookie", httpHeaders.getFirst("Cookie"))
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(bos.toByteArray()))
+                    .build();
+            HttpResponse<String> response = client.send(uploadReq, HttpResponse.BodyHandlers.ofString());
+            if (log.isDebugEnabled()) {
+                log.debug("请求: [{}],返回: [{}]", path, response.body());
+            }
+            if (!isOk(response.body())) {
+                throw new SimpleBizException("文件上传失败: " + filename);
+            }
+        } catch (Exception e) {
+            throw new SimpleBizException("文件上传失败: " + filename);
         }
     }
 
@@ -142,17 +157,20 @@ public class FileDownloadService {
         return CollectionUtils.isEmpty(list) ? null : list.getFirst();
     }
 
+    @Transactional
     public Files downloadFromTorrent(MultipartFile file, Integer userId, Long foldId) {
         Files files;
+        byte[] bytes;
+        String hash;
         try {
-            byte[] bytes = file.getBytes();
-            String hash = TorrentHashUtil.infoHash(bytes);
-            files = this.buildDhtFile(hash, foldId, userId);
-            this.uploadTorrent(ADD_TORRENT_PATH, bytes, file.getOriginalFilename());
+            bytes = file.getBytes();
+            hash = TorrentHashUtil.infoHash(bytes);
         } catch (Exception e) {
             log.error("读取torrent的hash失败: {}", e.getMessage());
-            return null;
+            throw new SimpleBizException("torrent文件读取失败: " + file.getOriginalFilename());
         }
+        files = this.buildDhtFile(hash, foldId, userId);
+        this.uploadTorrent(ADD_TORRENT_PATH, bytes, file.getOriginalFilename());
         return files;
     }
 

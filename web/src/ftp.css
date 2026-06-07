@@ -283,12 +283,22 @@ header {
   }
 
   & .tab-3 {
-    & > textarea{
+    & textarea{
       width: 100%;
       border-radius: 5px;
       resize: none;
       height: 40px;
       padding: 5px;
+    }
+
+    & > div:last-child {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      & input { 
+        flex: 1;
+      }
     }
   }
 

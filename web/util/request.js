@@ -16,17 +16,23 @@ export async function request(url, options = {}) {
         requestUrl += (requestUrl.includes('?') ? '&' : '?') + params;
     }
 
+    const isFormData = options.body instanceof FormData
+    const headers = {
+      Authorization: token,
+      ...options.headers
+    }
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json'
+    }
     const config = {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token,
-            ...options.headers
-        }
+      method,
+      headers
     };
 
     if (method !== 'GET' && options.body) {
-        config.body = JSON.stringify(options.body);
+      config.body = isFormData
+          ? options.body
+          : JSON.stringify(options.body)
     }
 
     const res = await fetch(requestUrl, config);
@@ -35,14 +41,14 @@ export async function request(url, options = {}) {
     }
     const rJson = await res.json()
     if(ENV.DEBUG) {
-        console.log("rJson", rJson)
+      console.log("rJson", rJson)
     }
     if(rJson.code !== 0) {
-        if(rJson.msg == "not login") {
-            window.location.replace('/login.html')
-            return
-        }
-        throw new Error(rJson.message || '请求失败')
+      if(rJson.msg == "not login") {
+        window.location.replace('/login.html')
+        return
+      }
+      throw new Error(rJson.message || '请求失败')
     }
     return rJson.data
 }

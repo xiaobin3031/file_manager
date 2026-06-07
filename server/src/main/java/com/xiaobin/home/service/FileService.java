@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,9 +57,17 @@ public class FileService {
     private LoginService loginService;
     @Autowired
     private DictManagerDao dictManagerDao;
+    @Autowired
+    private Environment environment;
 
     @PostConstruct
     public void fillFileType() {
+        String[] profiles = environment.getActiveProfiles();
+        for (String profile : profiles) {
+            if ("dev".equals(profile)) {
+                return;
+            }
+        }
         List<DictManager> all = this.dictManagerDao.findAll();
         for (DictManager dictManager : all) {
             if (Boolean.TRUE.equals(dictManager.getActive())) {
