@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
+import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -29,6 +30,10 @@ export default defineConfig(({ mode }) => {
       sourcemap: false, // 是否生成 source map
       minify: 'esbuild', // 或 'terser'
       rollupOptions: {
+        input: {
+          main: resolve(__dirname, 'index.html'),
+          login: resolve(__dirname, 'login.html')
+        },
         output: {
           // 控制输出文件名格式
           entryFileNames: 'assets/[name].[hash].js',
