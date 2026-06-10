@@ -1,0 +1,13 @@
+#image-preview {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  
+  & .image-container {
+    width: 90%;
+  }
+
+  & img {
+    width: 100%;
+  }
+}

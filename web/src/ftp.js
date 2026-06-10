@@ -1,3 +1,4 @@
+import './ftp.css'
 import { request } from '#utils/request.js'
 import { $, $$ } from '#utils/dom.js'
 import { is_enter } from '#utils/key_event.js'

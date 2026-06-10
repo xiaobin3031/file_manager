@@ -1,17 +1,18 @@
+import './css/main.css'
 import { $, $$ } from '#utils/dom.js'
 
 window.onresize = function () {
-  resize();
+  // resize();
 };
 
 window.addEventListener('load', e => {
-  resize()
+  // resize()
 })
 
 function resize() {
   const $root = $('body');
   const height = `${window.innerHeight - 10}px`
-  const width = `${window.innerWidth - 10}px`
+  const width = `${window.innerWidth - 30}px`
   $root.style.height = height
   $root.style.width = width
 }

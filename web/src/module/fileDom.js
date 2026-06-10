@@ -77,6 +77,7 @@ const dblClickFile = async (file) => {
       window.open(`src/page/videoPlay.html?fileId=${file.id}&name=${file.name}`, "_blank")
     }else if(isImage(file)) {
       // todo 图片预览
+      window.open(`src/page/imagePreview.html?fileId=${file.id}&name=${file.name}`, '_blank')
     }else if(isPdf(file)) {
       // todo pdf预览
     }

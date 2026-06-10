@@ -1,0 +1,29 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  height: 100vh;
+}
+
+input:focus {
+  outline: none;
+}
+input {
+  padding: 5px;
+  border-radius: 5px;
+  box-shadow: none;
+  outline: none;
+}
+input[type="text"] {
+  border: 1px solid #ddd;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  cursor: pointer;
+}

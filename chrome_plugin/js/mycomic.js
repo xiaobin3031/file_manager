@@ -5,9 +5,21 @@ if(document.readyState === 'loading') {
   documentInit()
 }
 
-function documentInit() {
+async function documentInit() {
   const $main = $('body > div.\\[grid-area\\:main\\] > div')
   const $head = $main.children[0]
+  const $btn = downloadCurrent($head, $main)
+  const $downloadAllBtn = downloadAllBtn($btn, $main)
+  $head.appendChild($btn)
+  $head.appendChild($downloadAllBtn)
+
+  if(localStorage.getItem('continuous') === "1") {
+    await sleep(3)
+    $downloadAllBtn.click()
+  }
+}
+
+function downloadCurrent($head, $main) {
   const $btn = document.createElement('button')
   $btn.type = 'button'
   $btn.innerText = '下载图片'
@@ -47,5 +59,44 @@ function documentInit() {
       $btn.style.color = 'black'
     }
   })
-  $head.appendChild($btn)
+  return $btn
+}
+
+function waitUntilDownloadFinish($btn) {
+  return new Promise(async (resolve) => {
+    while(true) {
+      await sleep(1)
+      if($btn.disabled) {
+        continue
+      }
+      resolve()
+      break
+    }
+  })
+}
+
+function downloadAllBtn($downloadBtn, $main) {
+  const $btn = document.createElement('button')
+  $btn.type = 'button'
+  $btn.innerText = '下载所有'
+  $btn.addEventListener('click', async e => {
+    localStorage.setItem('continuous', 1)
+    try {
+      $downloadBtn.click()
+      await waitUntilDownloadFinish($downloadBtn)
+      const $nextEle = $main.children[$main.children.length - 1].children[1].children[0].children[2]
+      if($nextEle.tagName === 'A') {
+        $nextEle.click()
+      }else{
+        $btn.disabled = true
+        $btn.style.color = 'green'
+        $btn.innerText = '下载完成'
+        localStorage.removeItem('continuous')
+      }
+    }catch(e) {
+      console.log('翻页失败', e)
+      localStorage.removeItem('continuous')
+    }
+  })
+  return $btn
 }

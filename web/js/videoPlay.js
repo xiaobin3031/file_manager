@@ -1,3 +1,4 @@
+import '../css/videoPlay.css'
 import { baseUrl, request } from '#utils/request.js'
 import { $, $$ } from '#utils/dom.js'
 import { is_space, is_left, is_right } from '#utils/key_event.js'
