@@ -21,7 +21,7 @@ public class TmpFileDTO {
     @Getter
     @Setter
     public static class Data {
-        private String fileName;
+        private String filename;
 
         private String url;
     }

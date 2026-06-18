@@ -1024,7 +1024,7 @@ public class FileService {
         for (TmpFileDTO.Data tmpFile : dto.getItems()) {
             if (StringUtils.isEmpty(tmpFile.getUrl())) continue;
 
-            String filename = tmpFile.getFileName();
+            String filename = tmpFile.getFilename();
             if (StringUtils.isEmpty(filename)) {
                 filename = tmpFile.getUrl().substring(tmpFile.getUrl().lastIndexOf("/") + 1);
             }

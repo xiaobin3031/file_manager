@@ -37,6 +37,13 @@ public class FileUploadService {
             com.xiaobin.home.entity.Files files = this.filesDao.loadFileInFold(foldId, fileId, userId);
             if(files != null && FileStatusConstant.isUpload(files.getStatus())) {
                 File targetFile = new File(files.getStoragePath());
+                File dir = targetFile.getParentFile();
+                if(!dir.exists()) {
+                    // 切换了盘符，可能会不存在目录
+                    if (!dir.mkdirs()) {
+                        throw new SimpleBizException("目录创建失败: " + dir.getAbsolutePath());
+                    }
+                }
                 if (!targetFile.exists() || targetFile.length() == 0L) {
                     try (OutputStream fos = new FileOutputStream(targetFile)) {
                         byte[] bytes = new byte[5 * 1024];
