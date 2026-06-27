@@ -64,7 +64,7 @@ public class FileUploadController {
                     this.loginService.getLoginId());
             files.setStatus(FileStatusConstant.UPLOAD);
             this.filesDao.save(files);
-        }else if(FileStatusConstant.isLocked(files.getStatus())){
+        }else if(FileStatusConstant.isLocked(files.getStatus()) && !FileStatusConstant.isUpload(files.getStatus())) {
             return ApiResponse.error("文件正在被其他操作锁定: " + FileStatusConstant.getStatusName(files.getStatus()));
         }
         String uploadId = files.getId() + "_fold";

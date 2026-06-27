@@ -102,36 +102,36 @@ public class FileService {
             createFileSample();
         });
 
-        Thread.ofVirtual().start(() -> {
-            log.info("将文件迁移到指定目录: {}", this.getRootPath());
-            PageQueryService<Files> pageQueryService = new PageQueryService<>();
-            pageQueryService.setMapper(this.filesDao::loadToMoveFiles);
-            pageQueryService.setIdMapper((file, minId) -> {
-                String targetPath = file.getStoragePath().replaceAll("^/home/xiaobin/Downloads", this.getRootPath());
-                File targetFile = new File(targetPath);
-                if (!targetFile.exists()) {
-                    File parentFile = targetFile.getParentFile();
-                    if (!parentFile.exists()) {
-                        if (!parentFile.mkdirs()) {
-                            log.error("创建目录失败: {}", parentFile.getAbsolutePath());
-                        }
-                    }
-                    log.info("准备复制: [{}] -> [{}]", file.getStoragePath(), targetFile.getAbsolutePath());
-                    try {
-                        java.nio.file.Files.copy(new File(file.getStoragePath()).toPath(), targetFile.toPath());
-                    } catch (IOException e) {
-                        log.error("复制文件失败, file.id: {}", file.getId(), e);
-                    }
-                    log.info("复制结束");
-                }
-                file.setStoragePath(targetFile.getAbsolutePath());
-                this.filesDao.save(file);
-                return Math.max(minId, file.getId());
-            });
-            pageQueryService.query();
-            log.info("文件迁移结束");
-
-        });
+//        Thread.ofVirtual().start(() -> {
+//            log.info("将文件迁移到指定目录: {}", this.getRootPath());
+//            PageQueryService<Files> pageQueryService = new PageQueryService<>();
+//            pageQueryService.setMapper(this.filesDao::loadToMoveFiles);
+//            pageQueryService.setIdMapper((file, minId) -> {
+//                String targetPath = file.getStoragePath().replaceAll("^/home/xiaobin/Downloads", this.getRootPath());
+//                File targetFile = new File(targetPath);
+//                if (!targetFile.exists()) {
+//                    File parentFile = targetFile.getParentFile();
+//                    if (!parentFile.exists()) {
+//                        if (!parentFile.mkdirs()) {
+//                            log.error("创建目录失败: {}", parentFile.getAbsolutePath());
+//                        }
+//                    }
+//                    log.info("准备复制: [{}] -> [{}]", file.getStoragePath(), targetFile.getAbsolutePath());
+//                    try {
+//                        java.nio.file.Files.copy(new File(file.getStoragePath()).toPath(), targetFile.toPath());
+//                    } catch (IOException e) {
+//                        log.error("复制文件失败, file.id: {}", file.getId(), e);
+//                    }
+//                    log.info("复制结束");
+//                }
+//                file.setStoragePath(targetFile.getAbsolutePath());
+//                this.filesDao.save(file);
+//                return Math.max(minId, file.getId());
+//            });
+//            pageQueryService.query();
+//            log.info("文件迁移结束");
+//
+//        });
 
         Thread.ofVirtual().start(() -> {
             log.info("开始处理压缩包");
@@ -161,6 +161,8 @@ public class FileService {
     }
 
     public void saveSample(Files file) {
+        if(!new File(file.getStoragePath()).exists()) return;
+
         File sampleFile = this.previewImage(file);
         if (sampleFile.exists()) {
             file.setSampleStatus(1);

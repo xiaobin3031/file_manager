@@ -32,7 +32,7 @@ public interface FilesDao extends JpaRepository<Files, Long> {
     /**
      * 查询视频文件
      */
-    @Query("select f from Files f where f.id > :minId and f.fileType is not null and f.deleted = false and f.sampleStatus = 0 order by f.id asc limit :size")
+    @Query("select f from Files f where f.id > :minId and f.fileType is not null and f.deleted = false and f.sampleStatus = 0 and f.status = 0 order by f.id asc limit :size")
     List<Files> pageNoSample(long minId, int size);
 
     @Query("select f from Files f where f.id > :minId and f.storagePath not like '/home/xiaobin/mnt/wd4t/%' and f.deleted = false order by f.id asc limit :size")

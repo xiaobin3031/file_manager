@@ -34,7 +34,7 @@ public class LoginService {
     private UserDao userDao;
 
     private static final Map<String, LoginUser> loginUserMap = new HashMap<>();
-    private static final Map<Integer, UserFtpCache> userFtpCacheMap = new HashMap<>();
+    private static final Map<String, UserFtpCache> userFtpCacheMap = new HashMap<>();
 
     public Integer getLoginId(){
         return getLoginUser().getId();
@@ -93,7 +93,6 @@ public class LoginService {
         user.setLastLoginTime(LocalDateTime.now());
         this.userDao.save(user);
         loginUserMap.put(loginUser.getToken(), loginUser);
-        this.clearUserCache(user);
         return loginUser;
     }
 
@@ -140,24 +139,16 @@ public class LoginService {
 
     public UserFtpCache getFtpCache() {
         LoginUser loginUser = getLoginUser();
-        return getFtpCache(loginUser.getId());
+        return getFtpCache(loginUser.getToken());
     }
 
-    public UserFtpCache getFtpCache(String token) {
-        LoginUser loginUser = getLoginUser(token);
-        return getFtpCache(loginUser.getId());
-    }
-
-    private UserFtpCache getFtpCache(Integer userId) {
-        UserFtpCache ftpCache = userFtpCacheMap.get(userId);
+    private UserFtpCache getFtpCache(String token) {
+        UserFtpCache ftpCache = userFtpCacheMap.get(token);
         if (ftpCache == null) {
             ftpCache = new UserFtpCache();
-            userFtpCacheMap.put(userId, ftpCache);
+            userFtpCacheMap.put(token, ftpCache);
         }
         return ftpCache;
     }
 
-    private void clearUserCache(User user){
-        userFtpCacheMap.remove(user.getId());
-    }
 }
