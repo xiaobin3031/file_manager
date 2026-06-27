@@ -55,7 +55,7 @@ const buildModifyModalBody = () => {
     if(!findText || !replaceText) return
     let reg = new RegExp(findText)
     $$('.replace-table tbody > tr').forEach($item => {
-      $('td:last-child textarea', $item).value = $('td:first-child', $item).innerText.replace(reg, replaceText)
+      $('td:last-child textarea', $item).value = $('td:last-child', $item).innerText.replace(reg, replaceText)
     })
   })
 

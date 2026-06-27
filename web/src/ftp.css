@@ -1,10 +1,11 @@
 :root {
   --header-height: 30px;
+  --footer-height: 30px;
 }
 
 section {
   padding: 0 30px;
-  height: calc(100% - var(--header-height) - 10px);
+  height: calc(100% - var(--header-height) - var(--footer-height) - 10px);
   overflow-y: scroll;
   margin-top:10px;
 }
@@ -444,5 +445,22 @@ header {
   
   & button:last-child {
     margin-left: 20px;
+  }
+}
+
+footer {
+  padding-left: 10px;
+  padding-right: 10px;
+  height: 30px;
+  border-top: 1px solid #cccccc;
+  display: flex;
+  align-items: center;
+
+  & .spance {
+    width: 30px;
+  }
+  & .event-bar {
+    flex: 1;
+    text-align: right;
   }
 }

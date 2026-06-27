@@ -5,6 +5,7 @@ import { buildFileDom } from '#modules/fileDom.js'
 import { showModal, hideModal } from '#components/modal.js'
 import { sleep } from '#utils/time.js'
 import { loadDirs, getFiles } from '#modules/file.js'
+import { UploadEvent, eventBar } from '#modules/eventBar.js'
 
 let $modal = null
 
@@ -117,7 +118,10 @@ const buildAddModalBody = () => {
     $progressBar.style.width = '0'
     const $tab2 = $('.tab-2', $body)
     const $filename = $('.file-add-info span.filename', $body)
-    for(let i=0;i<files.length;i++) {
+    for(let file of files) {
+      eventBar.add(new UploadEvent(file))
+    }
+    /*for(let i=0;i<files.length;i++) {
       const file = files[i]
       const $spans = $$('.file-add-info span', $body)
       $spans[0].innerText = `${i + 1} / ${files.length}`
@@ -137,7 +141,7 @@ const buildAddModalBody = () => {
       $progressBar.style.width = '0'
       $progressText.innerText = '0'
       await sleep()
-    }
+    }*/
 
     loadDirs()
     hideModal($modal)
