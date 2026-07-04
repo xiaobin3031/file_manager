@@ -3,6 +3,7 @@ import { $, $$ } from '#utils/dom.js'
 import { buildFileDom } from '#modules/fileDom.js'
 
 let currentFiles = []
+let currentFoldId = void 0
 
 export const setFils = (files) => {
   currentFiles = files
@@ -20,6 +21,7 @@ export const loadDirs = async () => {
 export const refreshDirs = (dirs) => {
   const files = dirs.files || []
   currentFiles = files
+  currentFoldId = dirs.currentFoldId
   const $app = $('#app')
   while($app.firstChild) {
     $app.removeChild($app.firstChild)
@@ -72,3 +74,6 @@ export const changeCheckOpsStatus = () => {
     }
 }
 
+export const getCurrentFoldId = () => {
+  return currentFoldId
+}

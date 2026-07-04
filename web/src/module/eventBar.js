@@ -7,12 +7,20 @@ class EventBar {
     this.$dom = $('footer > div.event-bar')
     this.queue = []
     this.current = null
+    this.total = 0
+    this.finished = 0
+    this.onFinish = []
   }
 
   add(event) {
+    this.total++
     event.attach(this)
     this.queue.push(event)
     this.next()
+  }
+
+  addOnFinish(fn) {
+    if(this.onFinish.indexOf(fn) === -1) this.onFinish.push(fn)
   }
 
   async next() {
@@ -26,7 +34,17 @@ class EventBar {
 
     try {
       await event.execute()
-      await event.finish()
+      this.finished++
+      if(this.finished === this.total) {
+        if(this.onFinish.length > 0) {
+          for(let fn of this.onFinish) {
+            await fn()
+          }
+          this.onFinish = []
+        }
+        this.finished = 0
+        this.total = 0
+      }
     }finally{
       this.current = null
       this.refresh()
@@ -41,6 +59,7 @@ class EventBar {
     }
 
     this.$dom.innerHTML = `
+      <span>${this.finished} / ${this.total}</span>
       <span>${this.current.title}</span>
       <progress value="${this.current.progress}" max="100"></progress>
     `
@@ -75,20 +94,20 @@ class BaseEvent {
   }
 
   async execute() {}
-  async finish(){}
 }
 
 export const eventBar = new EventBar()
 
 export class UploadEvent extends BaseEvent {
   
-  constructor(file) {
+  constructor(file, foldId) {
     super("上传: " + file.name)
     this.file = file
+    this.foldId = foldId
   }
 
   async execute() {
-    await uploadFile(this.file, (percent) => {
+    await uploadFile({file: this.file, foldId: this.foldId}, (percent) => {
       this.setProgress(Math.min(percent, 100).toFixed(0))
     })
   }

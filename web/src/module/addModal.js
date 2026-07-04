@@ -1,10 +1,10 @@
 import { $, $$ } from '#utils/dom.js'
 import { is_enter } from '#utils/key_event.js'
-import { request, uploadFile, baseUrl } from '#utils/request.js'
+import { request, baseUrl } from '#utils/request.js'
 import { buildFileDom } from '#modules/fileDom.js'
 import { showModal, hideModal } from '#components/modal.js'
 import { sleep } from '#utils/time.js'
-import { loadDirs, getFiles } from '#modules/file.js'
+import { loadDirs, getFiles, getCurrentFoldId } from '#modules/file.js'
 import { UploadEvent, eventBar } from '#modules/eventBar.js'
 
 let $modal = null
@@ -118,32 +118,16 @@ const buildAddModalBody = () => {
     $progressBar.style.width = '0'
     const $tab2 = $('.tab-2', $body)
     const $filename = $('.file-add-info span.filename', $body)
+    let uploadEvent
+    let foldId = getCurrentFoldId()
     for(let file of files) {
-      eventBar.add(new UploadEvent(file))
+      uploadEvent = new UploadEvent(file, foldId)
+      eventBar.add(uploadEvent)
     }
-    /*for(let i=0;i<files.length;i++) {
-      const file = files[i]
-      const $spans = $$('.file-add-info span', $body)
-      $spans[0].innerText = `${i + 1} / ${files.length}`
-      $filename.innerText = `${file.name}`
-      $tab2.classList.replace('wait', 'uploading')
-      await uploadFile(file, (percent) => {
-          if(percent === -1) return
-          let pp = Math.min(percent, 100).toFixed(0)
-          $progressBar.style.width = `${pp}%`
-          $progressText.innerText = `${pp}`
-          if (+pp === 100) {
-              $tab2.classList.replace('uploading', 'success')
-          }
-      })
-      await sleep()
-      $tab2.classList.replace('success', 'wait')
-      $progressBar.style.width = '0'
-      $progressText.innerText = '0'
-      await sleep()
-    }*/
+    eventBar.addOnFinish(async () => {
+      if(foldId === getCurrentFoldId()) loadDirs()
+    })
 
-    loadDirs()
     hideModal($modal)
   })
 

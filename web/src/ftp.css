@@ -32,7 +32,7 @@ table, td, th {
     &.dir {
       & .file-sample {
         background-image: url("/asserts/folder.svg");
-        background-size: 50% 50%;
+        background-size: 70% 70%;
         background-repeat: no-repeat;
         background-position: center;
       }

@@ -54,12 +54,15 @@ export async function request(url, options = {}) {
 }
 
 
-export async function uploadFile(file, onProgress) {
+export async function uploadFile(data, onProgress) {
+  let file = data.file
+  let foldId = data.foldId
   const total = file.size
   const totalChunks = Math.ceil(total / CHUNK_SIZE)
   let {currentChunk, uploadId} = await request('/file-upload/init', {
     method: 'POST',
     body: {
+      foldId,
       totalChunks,
       fileName: file.name,
       totalSize: total
