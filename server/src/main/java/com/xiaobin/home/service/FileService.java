@@ -161,7 +161,7 @@ public class FileService {
     }
 
     public void saveSample(Files file) {
-        if(!new File(file.getStoragePath()).exists()) return;
+        if (!new File(file.getStoragePath()).exists()) return;
 
         File sampleFile = this.previewImage(file);
         if (sampleFile.exists()) {
@@ -401,6 +401,7 @@ public class FileService {
     public void batchMoveFile(List<FtpDirsDTO> ftpFiles, Long toFoldId, UserFtpCache ftpCache, Integer userId) {
         if (ftpFiles != null && !ftpFiles.isEmpty()) {
             Long curFoldId = ftpCache.currentFoldId();
+            int movedFileCount = 0, movedFoldCount = 0;
             for (FtpDirsDTO file : ftpFiles) {
                 Folds targetFolds = this.foldsDao.findByIdAndUserIdAndDeletedFalse(toFoldId, userId);
                 if (targetFolds == null) continue;
@@ -412,15 +413,25 @@ public class FileService {
                         files.setUpdateAt(LocalDateTime.now());
                         files.setSampleStatus(0);
                         this.filesDao.save(files);
+                        movedFileCount++;
                         CompletableFuture.runAsync(() -> saveSample(files));
                     }
                 } else {
                     Folds folds = this.foldsDao.loadFoldInFold(curFoldId, file.getId(), userId);
                     if (folds != null && !Objects.equals(folds.getParentId(), toFoldId)) {
                         folds.setParentId(targetFolds.getId());
+                        movedFoldCount++;
                         this.foldsDao.save(folds);
                     }
                 }
+            }
+            if (movedFileCount > 0) {
+                this.foldsDao.updateFileCount(toFoldId, movedFileCount, userId);
+                this.foldsDao.updateFileCount(curFoldId, -movedFileCount, userId);
+            }
+            if (movedFileCount > 0) {
+                this.foldsDao.updateFoldCount(toFoldId, movedFoldCount, userId);
+                this.foldsDao.updateFoldCount(curFoldId, -movedFoldCount, userId);
             }
         }
     }
@@ -503,11 +514,13 @@ public class FileService {
         }
     }
 
+    @Transactional
     public void addFile(Long foldId, File targetFile, Integer userId) {
         Files files = this.filesDao.loadFilesByNameInFold(foldId, targetFile.getName(), userId);
         if (files == null) {
             files = this.buildFiles(foldId, targetFile.getName(), targetFile.length(), targetFile.getAbsolutePath(), userId);
             final Files savedFiles = this.filesDao.save(files);
+            this.foldsDao.updateFileCount(foldId, 1, userId);
             CompletableFuture.runAsync(() -> saveSample(savedFiles));
         }
     }
@@ -558,6 +571,7 @@ public class FileService {
     public void batchRemoveFile(List<FtpDirsDTO> ftpFiles, Long curFoldId, Integer userId) {
         if (ftpFiles != null && !ftpFiles.isEmpty()) {
             boolean deleteFolds = false;
+            int deletedFileCount = 0, deletedFoldCount = 0;
             for (FtpDirsDTO file : ftpFiles) {
                 if (file.isFileFlag()) {
                     Files files = this.filesDao.loadFileInFold(curFoldId, file.getId(), userId);
@@ -565,6 +579,7 @@ public class FileService {
                         files.setDeleted(true);
                         files.setDeleteAt(LocalDateTime.now());
                         this.filesDao.save(files);
+                        deletedFileCount++;
                     }
                 } else {
                     Folds fold = this.foldsDao.findFoldsByParentIdAndId(curFoldId, file.getId());
@@ -573,15 +588,19 @@ public class FileService {
                         fold.setDeleteAt(LocalDateTime.now());
                         this.foldsDao.save(fold);
                         deleteFolds = true;
+                        deletedFoldCount++;
                     }
                 }
             }
+            if (deletedFileCount > 0) this.foldsDao.updateFileCount(curFoldId, deletedFileCount, userId);
             if (deleteFolds) {
+                this.foldsDao.updateFoldCount(curFoldId, deletedFoldCount, userId);
                 CompletableFuture.runAsync(this::signDeleteInDeletedFold);
             }
         }
     }
 
+    @Transactional
     public Folds addFold(String name, Long parentId, Integer userId) {
         Folds fold = this.foldsDao.loadFoldsByNameInFold(name, parentId, userId);
         if (fold == null) {
@@ -593,6 +612,7 @@ public class FileService {
             fold.setDeleted(false);
             fold.setCreateAt(LocalDateTime.now());
             this.foldsDao.save(fold);
+            this.foldsDao.updateFoldCount(parentId, 1, userId);
             if (fold.getId() != null && fold.getId() > 0) {
                 File foldDir = new File(this.getRootPath(), String.valueOf(fold.getId()));
                 if (!foldDir.exists() && !foldDir.mkdir()) {
@@ -665,6 +685,8 @@ public class FileService {
     @Transactional
     public void unzip(List<Long> fileIds, Long curFoldId, Integer userId) {
         List<Long> toUnzips = new ArrayList<>();
+        int zippedFileCount = 0, zippedFoldCount = 0;
+        List<Long> unzippedFolds = new ArrayList<>();
         for (Long fileId : fileIds) {
             Files files = this.filesDao.loadFileInFold(curFoldId, fileId, userId);
             if (files == null) {
@@ -672,6 +694,9 @@ public class FileService {
                 if (folds != null) {
                     this.filesDao.changeFold(curFoldId, folds.getId(), userId);
                     this.foldsDao.changeFold(curFoldId, folds.getId(), userId);
+                    zippedFileCount += folds.getFileCount();
+                    zippedFoldCount += folds.getFoldCount();
+                    unzippedFolds.add(folds.getId());
                     continue;
                 }
                 throw new SimpleBizException("解压失败");
@@ -684,6 +709,9 @@ public class FileService {
             this.filesDao.save(files);
             toUnzips.add(fileId);
         }
+        if (zippedFileCount > 0) this.foldsDao.updateFileCount(curFoldId, zippedFileCount, userId);
+        if (zippedFoldCount > 0) this.foldsDao.updateFoldCount(curFoldId, zippedFoldCount, userId);
+        if (!unzippedFolds.isEmpty()) this.foldsDao.clearFoldAndFileCount(unzippedFolds, userId);
         if (!toUnzips.isEmpty()) {
             toUnzipFiles.addAll(toUnzips);
         }
@@ -1039,6 +1067,7 @@ public class FileService {
                 newFiles.setStatus(FileStatusConstant.DOWNLOAD_DIRECT);
                 newFiles.setReferer(referer);
                 this.filesDao.save(newFiles);
+                this.foldsDao.updateFileCount(newFiles.getFoldId(), 1, userId);
             }
         }
     }

@@ -15,6 +15,9 @@ public class FtpDirsDTO {
 
     private Integer sort;
 
+    private int fileCount;
+    private int foldCount;
+
     public FtpDirsDTO(Long id, boolean fileFlag, String name) {
         this.id = id;
         this.fileFlag = fileFlag;

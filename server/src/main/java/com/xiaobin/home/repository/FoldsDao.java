@@ -12,6 +12,8 @@ import java.util.List;
 
 public interface FoldsDao extends JpaRepository<Folds, Long> {
 
+    Folds findFoldsByNameAndUserIdAndDeletedFalse(String name, Integer userId);
+
     Folds findFoldsByParentIdAndId(Long parentId, Long id);
 
     Folds findByIdAndUserIdAndDeletedFalse(Long id, Integer userId);
@@ -44,5 +46,18 @@ public interface FoldsDao extends JpaRepository<Folds, Long> {
     @Query("update Folds set parentId = :curFoldId where parentId != 0 and parentId = :id and userId = :userId and deleted = false")
     void changeFold(Long curFoldId, Long id, Integer userId);
 
-    List<Folds> findByStatusAndDeletedFalseAndHostUrlIsNotNull(Short status);
+    @Modifying
+    @Transactional
+    @Query("update Folds set foldCount = foldCount + :count where id = :id and userId = :userId")
+    void updateFoldCount(Long id, int count, Integer userId);
+
+    @Modifying
+    @Transactional
+    @Query("update Folds set fileCount = foldCount + :count where id = :id and userId = :userId")
+    void updateFileCount(Long id, int count, Integer userId);
+
+    @Modifying
+    @Transactional
+    @Query("update Folds set fileCount = 0, foldCount = 0 where id in :ids and userId = :userId")
+    void clearFoldAndFileCount(List<Long> ids, Integer userId);
 }

@@ -1,6 +1,5 @@
 package com.xiaobin.home.controller;
 
-import com.xiaobin.home.config.FtpConfig;
 import com.xiaobin.home.dto.*;
 import com.xiaobin.home.dto.login.UserFtpCache;
 import com.xiaobin.home.entity.FileDownloadPlan;
@@ -28,10 +27,7 @@ import javax.xml.xpath.XPathExpressionException;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 @RequestMapping("/ftp")
@@ -47,8 +43,6 @@ public class FtpController {
     private FilesDao filesDao;
     @Autowired
     private LoginService loginService;
-    @Autowired
-    private FtpConfig ftpConfig;
     @Autowired
     private FileDownloadService fileDownloadService;
     @Autowired
@@ -102,6 +96,8 @@ public class FtpController {
             for (Folds fold : folds) {
                 FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(fold.getId(), false, fold.getName());
                 ftpDirsDTO.setSort(fold.getSort());
+                ftpDirsDTO.setFoldCount(fold.getFoldCount());
+                ftpDirsDTO.setFileCount(fold.getFileCount());
                 list.add(ftpDirsDTO);
             }
             if (foldId > 0L) {
@@ -133,6 +129,7 @@ public class FtpController {
         result.setFiles(list);
         // 查一下有没有进度
         result.setLastFile(lastFiles);
+        result.setCurrentFoldId(ftpCache.currentFoldId());
         return ApiResponse.ok(result);
     }
 
@@ -246,14 +243,17 @@ public class FtpController {
     }
 
     @PostMapping("/uploadFile")
-    public ApiResponse uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("filename") String filename) {
+    public ApiResponse uploadFile(@RequestParam("file") MultipartFile file, @RequestParam(value = "foldId", required = false) Long foldId) {
         UserFtpCache ftpCache = this.loginService.getFtpCache();
         if (!ftpCache.isPhysicsFlag()) {
-            File foldDir = new File(this.fileService.getRootPath(), String.valueOf(ftpCache.currentFoldId()));
+            if (foldId == null) {
+                foldId = ftpCache.currentFoldId();
+            }
+            File foldDir = new File(this.fileService.getRootPath(), String.valueOf(foldId));
             if (!foldDir.exists() && !foldDir.mkdir()) {
                 return ApiResponse.error("文件夹创建失败");
             }
-            File targetFile = new File(foldDir, filename);
+            File targetFile = new File(foldDir, Objects.requireNonNullElse(file.getOriginalFilename(), UUID.randomUUID().toString()));
             if (!targetFile.exists()) {
                 try (FileOutputStream fos = new FileOutputStream(targetFile)) {
                     fos.write(file.getBytes());
@@ -263,7 +263,7 @@ public class FtpController {
                     return null;
                 }
             }
-            this.fileService.addFile(ftpCache.currentFoldId(), targetFile, this.loginService.getLoginId());
+            this.fileService.addFile(foldId, targetFile, this.loginService.getLoginId());
         }
         return this.listDirs();
     }

@@ -78,6 +78,14 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <!-- Source: https://mvnrepository.com/artifact/io.milton/milton-server-ce -->
+        <dependency>
+            <groupId>io.milton</groupId>
+            <artifactId>milton-server-ce</artifactId>
+            <version>4.1.1.2676</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>

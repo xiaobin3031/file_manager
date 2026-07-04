@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -51,16 +52,15 @@ public class FileUploadController {
     @PostMapping("/init")
     public ApiResponse initUpload(@RequestBody FileUploadDTO dto) {
         UserFtpCache ftpCache = this.loginService.getFtpCache();
-        if (ftpCache.currentFoldId() == 0L || ftpCache.isPhysicsFlag()) {
+        Long foldId = Objects.requireNonNullElse(dto.getFoldId(), ftpCache.currentFoldId());
+        if (foldId == 0L || ftpCache.isPhysicsFlag()) {
             return ApiResponse.error("暂无权限");
         }
         Integer userId = this.loginService.getLoginId();
-        Files files = this.filesDao.loadFilesByNameInFold(ftpCache.currentFoldId(), dto.getFileName(), userId);
+        Files files = this.filesDao.loadFilesByNameInFold(foldId, dto.getFileName(), userId);
         if(files == null) {
-            files = this.fileService.buildFiles(ftpCache.currentFoldId(),
-                    dto.getFileName(),
-                    dto.getTotalSize(),
-                    this.fileService.getRootPath() + File.separator + ftpCache.currentFoldId() + File.separator + dto.getFileName(),
+            files = this.fileService.buildFiles(foldId, dto.getFileName(), dto.getTotalSize(),
+                    this.fileService.getRootPath() + File.separator + foldId + File.separator + dto.getFileName(),
                     this.loginService.getLoginId());
             files.setStatus(FileStatusConstant.UPLOAD);
             this.filesDao.save(files);
@@ -76,6 +76,7 @@ public class FileUploadController {
             progress.setAddTime(LocalDateTime.now());
             progress.setTotalChunk(dto.getTotalChunks());
             progress.setCurrentChunk(0L);
+            progress.setFoldId(foldId);
             this.fileUploadProgressDao.save(progress);
         }
         progressMap.put(uploadId, progress);
@@ -126,13 +127,12 @@ public class FileUploadController {
 
     @PostMapping("/finish")
     public ApiResponse finish(@RequestBody FileUploadDTO dto) {
-        UserFtpCache ftpCache = this.loginService.getFtpCache();
         Integer loginId = this.loginService.getLoginId();
         FileUploadProgress progress = progressMap.get(dto.getFileId());
         if (progress == null) {
             return ApiResponse.error("文件不存在");
         }
-        Folds folds = this.foldsDao.loadSpecialFoldsInFold(ftpCache.currentFoldId(), loginId);
+        Folds folds = this.foldsDao.loadSpecialFoldsInFold(progress.getFoldId(), loginId);
         if (folds == null) {
             return ApiResponse.error("文件夹不存在");
         }

@@ -42,4 +42,8 @@ public class Folds {
     private String hostUrl;
 
     private Short status;
+
+    private Integer fileCount;
+
+    private Integer foldCount;
 }

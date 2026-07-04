@@ -7,8 +7,8 @@ import com.xiaobin.home.config.FtpConfig;
 import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.entity.Files;
 import com.xiaobin.home.exception.SimpleBizException;
-import com.xiaobin.home.repository.FileDownloadConfigDao;
 import com.xiaobin.home.repository.FilesDao;
+import com.xiaobin.home.repository.FoldsDao;
 import com.xiaobin.home.repository.LogsDao;
 import com.xiaobin.home.util.TorrentHashUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -74,7 +74,7 @@ public class FileDownloadService {
     @Autowired
     private LogsDao logsDao;
     @Autowired
-    private FileDownloadConfigDao fileDownloadConfigDao;
+    private FoldsDao foldsDao;
 
     private void login() {
         log.info("开始登录");
@@ -192,6 +192,7 @@ public class FileDownloadService {
             files.setStatus(FileStatusConstant.DOWNLOAD);
             files.setDhtHash(hash);
             this.filesDao.save(files);
+            this.foldsDao.updateFileCount(foldId, 1, userId);
         } else if (!Objects.equals(files.getFoldId(), foldId) || !Objects.equals(files.getUserId(), userId)) {
             // 不是自己的，或者不在这个目录，那就改成自己的
             Files updateFiles = new Files();
@@ -207,6 +208,7 @@ public class FileDownloadService {
             updateFiles.setDhtHash(hash);
             this.filesDao.save(updateFiles);
             files = updateFiles;
+            this.foldsDao.updateFileCount(foldId, 1, userId);
         }
         return files;
     }

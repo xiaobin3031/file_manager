@@ -27,4 +27,6 @@ public class FileUploadProgress {
     private Boolean storeFlag;
 
     private LocalDateTime addTime;
+
+    private Long foldId;
 }

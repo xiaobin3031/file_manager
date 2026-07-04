@@ -142,7 +142,7 @@ public class LoginService {
         return getFtpCache(loginUser.getToken());
     }
 
-    private UserFtpCache getFtpCache(String token) {
+    public UserFtpCache getFtpCache(String token) {
         UserFtpCache ftpCache = userFtpCacheMap.get(token);
         if (ftpCache == null) {
             ftpCache = new UserFtpCache();

@@ -14,4 +14,6 @@ public class ListDirDTO {
     private List<FtpDirsDTO> files;
 
     private FtpDirsDTO lastFile;
+
+    private Long currentFoldId;
 }
