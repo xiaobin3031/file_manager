@@ -10,12 +10,17 @@ async function documentInit() {
   const $head = $main.children[0]
   const $btn = downloadCurrent($head, $main)
   const $downloadAllBtn = downloadAllBtn($btn, $main)
+  const $downloadPrevBtn = downloadAllPrevBtn($btn, $main)
+  $head.appendChild($downloadPrevBtn)
   $head.appendChild($btn)
   $head.appendChild($downloadAllBtn)
 
   if(localStorage.getItem('continuous') === "1") {
     await sleep(3)
     $downloadAllBtn.click()
+  }else if(localStorage.getItem('continuous') === "2") {
+    await sleep(3)
+    $downloadPrevBtn.click()
   }
 }
 
@@ -35,9 +40,19 @@ function downloadCurrent($head, $main) {
       const $body = $main.children[1]
       let imgs = Array.from($$('img', $body)).map($img => {
         const url = $img.src || $img.dataset.src
+        let filename = url.substring(url.lastIndexOf('/') + 1)
+        const idx = filename.indexOf('.');
+        const ext = filename.substring(idx)
+        filename = filename.substring(0, idx)
+        if(filename.indexOf('-') > 0) {
+          filename = filename.split('-')[0]
+          filename = '000' + filename
+          filename = filename.substring(filename.length - 3)
+        }
+        filename += ext
         return {
-          url: url,
-          fileName: url.substring(url.lastIndexOf('/') + 1)
+          url,
+          filename 
         }
       })
       chrome.runtime.sendMessage({
@@ -78,7 +93,7 @@ function waitUntilDownloadFinish($btn) {
 function downloadAllBtn($downloadBtn, $main) {
   const $btn = document.createElement('button')
   $btn.type = 'button'
-  $btn.innerText = '下载所有'
+  $btn.innerText = '下载所有(下一话)'
   $btn.addEventListener('click', async e => {
     localStorage.setItem('continuous', 1)
     try {
@@ -87,6 +102,32 @@ function downloadAllBtn($downloadBtn, $main) {
       const $nextEle = $main.children[$main.children.length - 1].children[1].children[0].children[2]
       if($nextEle.tagName === 'A') {
         $nextEle.click()
+      }else{
+        $btn.disabled = true
+        $btn.style.color = 'green'
+        $btn.innerText = '下载完成'
+        localStorage.removeItem('continuous')
+      }
+    }catch(e) {
+      console.log('翻页失败', e)
+      localStorage.removeItem('continuous')
+    }
+  })
+  return $btn
+}
+
+function downloadAllPrevBtn($downloadBtn, $main) {
+  const $btn = document.createElement('button')
+  $btn.type = 'button'
+  $btn.innerText = '下载所有(上一话)'
+  $btn.addEventListener('click', async e => {
+    localStorage.setItem('continuous', 2)
+    try {
+      $downloadBtn.click()
+      await waitUntilDownloadFinish($downloadBtn)
+      const $prevBtn = $main.children[$main.children.length - 1].children[1].children[0].children[0]
+      if($prevBtn.tagName === 'A') {
+        $prevBtn.click()
       }else{
         $btn.disabled = true
         $btn.style.color = 'green'
