@@ -21,6 +21,12 @@ public interface FoldsDao extends JpaRepository<Folds, Long> {
     @Query("select f from Folds f where f.parentId = :parentId and f.userId = :userId and f.deleted = false")
     List<Folds> loadFolds(Long parentId, Integer userId);
 
+    @Query("select f from Folds f where f.parentId in :parentIds and f.userId = :userId and f.deleted = false")
+    List<Folds> loadFoldsByParentIds(List<Long> parentIds, Integer userId);
+
+    @Query("select f from Folds f where f.id in :ids and f.userId = :userId and f.deleted = false")
+    List<Folds> loadFoldsByIds(List<Long> ids, Integer userId);
+
     @Query("select f from Folds f where f.name = :name and f.parentId = :parentId and f.userId = :userId and f.deleted = false")
     Folds loadFoldsByNameInFold(String name, Long parentId, Integer userId);
 

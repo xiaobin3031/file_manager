@@ -4,6 +4,21 @@ const CHUNK_SIZE = 20 * 1024 * 1024; // 每片 xMB
 
 export const baseUrl = ENV.BASE_URL
 
+export async function downloadFile(fileId) {
+  const fileToken = await request('/ftp/prepareFile', {
+    method: "POST",
+    body: {
+      id: fileId
+    }
+  })
+  if(!fileToken) {
+    window.alert("文件准备失败")
+    return
+  }
+  let requestUrl = `${ENV.BASE_URL}/ftp/downloadFile?fileToken=${fileToken}`;
+  window.open(requestUrl)
+}
+
 export async function request(url, options = {}) {
     console.log(ENV.BASE_URL)
     const token = `Bearer ${localStorage.getItem('token') || ''}`
@@ -37,7 +52,8 @@ export async function request(url, options = {}) {
 
     const res = await fetch(requestUrl, config);
     if(!res.ok) {
-        throw new Error('请求失败')
+      window.alert("请求失败")
+      throw new Error('请求失败')
     }
     const rJson = await res.json()
     if(ENV.DEBUG) {
@@ -48,6 +64,7 @@ export async function request(url, options = {}) {
         window.location.replace('/login.html')
         return
       }
+      window.alert(rJson.message || '请求失败')
       throw new Error(rJson.message || '请求失败')
     }
     return rJson.data

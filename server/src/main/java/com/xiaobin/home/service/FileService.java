@@ -29,6 +29,7 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.URI;
 import java.net.URLConnection;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Service
 @Slf4j
@@ -368,25 +370,9 @@ public class FileService {
     }
 
     public String generateFileDownloadToken(boolean prepareForPlay, Files files, Integer userId) {
-        String token = userFileCache.get(userId);
-        String originToken = token;
-        if (token != null) {
-            if (!prepareForPlay) {
-                throw new SimpleBizException("当前文件下载中");
-            }
-            Files files1 = fileTokenCache.get(token);
-            if (files1 != null && !Objects.equals(files1.getId(), files.getId())) {
-                token = null;
-            }
-        }
-        if (token == null) {
-            token = UUID.randomUUID().toString().replaceAll("-", "");
-            userFileCache.put(userId, token);
-            fileTokenCache.put(token, files);
-            if (originToken != null) {
-                fileTokenCache.remove(originToken);
-            }
-        }
+        String token = UUID.randomUUID().toString().replaceAll("-", "");
+        userFileCache.put(userId, token);
+        fileTokenCache.put(token, files);
         return token;
     }
 
@@ -611,6 +597,8 @@ public class FileService {
             fold.setUserId(userId);
             fold.setDeleted(false);
             fold.setCreateAt(LocalDateTime.now());
+            fold.setFoldCount(0);
+            fold.setFileCount(0);
             this.foldsDao.save(fold);
             this.foldsDao.updateFoldCount(parentId, 1, userId);
             if (fold.getId() != null && fold.getId() > 0) {
@@ -1072,4 +1060,66 @@ public class FileService {
         }
     }
 
+    private void loadFolds(List<Long> foldIds, Integer userId, List<Path> allFiles) {
+        List<Folds> subFolds = this.foldsDao.loadFoldsByParentIds(foldIds, userId);
+        if (!subFolds.isEmpty()) {
+            this.loadFolds(subFolds.stream().map(Folds::getId).toList(), userId, allFiles);
+        }
+        List<Files> files = this.filesDao.loadFilesByFoldIds(foldIds, userId);
+        if (!files.isEmpty()) {
+            for (Files file : files) {
+                if (StringUtils.isEmpty(file.getStoragePath())) continue;
+                allFiles.add(new File(file.getStoragePath()).toPath());
+            }
+        }
+    }
+
+    public void createCbz(List<Long> fileIds) {
+        UserFtpCache ftpCache = this.loginService.getFtpCache();
+        File targetFold = new File(this.getRootPath(), String.valueOf(ftpCache.currentFoldId()));
+        if (!targetFold.exists() && !targetFold.mkdirs()) {
+            throw new SimpleBizException("目录创建失败");
+        }
+        Integer userId = this.loginService.getLoginId();
+        Folds folds = this.foldsDao.findByIdAndUserIdAndDeletedFalse(ftpCache.currentFoldId(), userId);
+        if (folds == null) throw new SimpleBizException("目录不存在");
+        int index = 1;
+        File targetFile = new File(targetFold, String.format("%s-%d.cbz", folds.getName(), index));
+        while (targetFile.exists()) {
+            index++;
+            targetFile = new File(targetFold, String.format("%s-%d.cbz", folds.getName(), index));
+        }
+
+        List<Path> allFiles = new ArrayList<>();
+        this.loadFolds(fileIds, userId, allFiles);
+
+        List<Files> files = this.filesDao.loadFilesByFoldIds(fileIds, userId);
+        if (!files.isEmpty()) {
+            for (Files file : files) {
+                if (StringUtils.isEmpty(file.getStoragePath())) continue;
+                allFiles.add(new File(file.getStoragePath()).toPath());
+            }
+        }
+
+        // 生成cbz
+        index = 1;
+        try (ZipOutputStream zos = new ZipOutputStream(java.nio.file.Files.newOutputStream(targetFile.toPath()))) {
+
+            for (Path image : allFiles) {
+                String name = String.format("%04d%s", index++, getExtension(image));
+                zos.putNextEntry(new ZipEntry(name));
+                java.nio.file.Files.copy(image, zos);
+                zos.closeEntry();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        this.addFile(ftpCache.currentFoldId(), targetFile, userId);
+    }
+
+    private String getExtension(Path path) {
+        String name = path.getFileName().toString();
+        int i = name.lastIndexOf('.');
+        return i == -1 ? "" : name.substring(i);
+    }
 }

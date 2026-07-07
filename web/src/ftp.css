@@ -138,6 +138,12 @@ header {
     &.mirgrate {
       background-image: url("/asserts/mirgrate.svg");
     }
+    &.download {
+      background-image: url("/asserts/download.svg");
+    }
+    &.comic {
+      background-image: url("/asserts/comic.svg");
+    }
   }
 }
 

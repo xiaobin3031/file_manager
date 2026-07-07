@@ -209,9 +209,6 @@ public class FtpController {
     public void downloadFile(@RequestParam("fileToken") String fileToken, HttpServletResponse response) throws IOException {
         Files files = this.fileService.readFileFromCache(fileToken);
         File file = new File(files.getStoragePath());
-        byte[] bytes = this.fileService.readFile(file);
-        if (bytes == null) return;
-
         String mimeType = java.nio.file.Files.probeContentType(file.toPath());
         if (mimeType == null) mimeType = "application/octet-stream";
 
@@ -222,11 +219,13 @@ public class FtpController {
         response.setHeader("Content-Length", String.valueOf(java.nio.file.Files.size(file.toPath())));
 
         // 以流的方式写出文件内容
-        try (OutputStream out = response.getOutputStream()) {
-            out.write(bytes);
+        try(InputStream inputStream = new FileInputStream(file);OutputStream out = response.getOutputStream()) {
+            int read;
+            byte[] bytes = new byte[10240];
+            while( (read = inputStream.read(bytes)) != -1 ) {
+                out.write(bytes, 0, read);
+            }
             out.flush();
-        } catch (IOException e) {
-            log.error("返回文件失败: {}", e.getMessage(), e);
         }
     }
 
@@ -434,6 +433,12 @@ public class FtpController {
             this.fileService.addTmpFile(dto, 1);
             CompletableFuture.runAsync(() -> this.fileDownloadService.downloadDirectBatch());
         }
+        return ApiResponse.ok();
+    }
+
+    @PostMapping("/createCbz")
+    public ApiResponse createCbz(@RequestBody List<Long> fileIds) {
+        this.fileService.createCbz(fileIds);
         return ApiResponse.ok();
     }
 }

@@ -97,6 +97,8 @@ public class ExpandFoldsAutoService {
                     newFolds.setCreateAt(LocalDateTime.now());
                     newFolds.setUserId(userId);
                     newFolds.setDeleted(false);
+                    newFolds.setFoldCount(0);
+                    newFolds.setFileCount(0);
                     newFolds = this.foldsDao.save(newFolds);
                     if (newFolds.getId() == null) return;
                 }

@@ -100,4 +100,10 @@ public interface FilesDao extends JpaRepository<Files, Long> {
 
     @Query("select f from Files f where f.id > :minId and f.deleted = true and f.removed = true order by f.id asc limit :size")
     List<Files> loadToDeleteFilesRecord(Long minId, Integer size);
+
+    @Query("select f from Files f where f.foldId in :foldIds and f.userId = :userId and f.deleted = false")
+    List<Files> loadFilesByFoldIds(List<Long> foldIds, Integer userId);
+
+    @Query("select f from Files f where f.id in :ids and f.userId = :userId and f.deleted = false")
+    List<Files> loadFilesByIds(List<Long> ids, Integer userId);
 }

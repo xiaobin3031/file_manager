@@ -1,5 +1,5 @@
 import './ftp.css'
-import { request } from '#utils/request.js'
+import { request, downloadFile } from '#utils/request.js'
 import { $, $$ } from '#utils/dom.js'
 import { is_enter } from '#utils/key_event.js'
 import { buildFileDom } from '#modules/fileDom.js'
@@ -89,6 +89,26 @@ document.addEventListener('DOMContentLoaded', () => {
     e.stopPropagation()
     await request('/ftp/sortFilesByNameAsc', {
       method: "POST"
+    })
+    loadDirs()
+  })
+  $('#ops > span.download').addEventListener('click', (e) => {
+    const {selectedFiles} = getSelectedFiles()
+    if(selectedFiles.length != 1) {
+      window.alert("仅支持单个文件的下载")
+      return
+    }
+    downloadFile(selectedFiles[0].id)
+  })
+  $('#ops > span.comic').addEventListener('click', async (e) => {
+    const {selectedFiles} = getSelectedFiles()
+    if(selectedFiles.length == 0) {
+      window.alert("请选择要生成cbz的文件/文件夹")
+      return
+    }
+    await request('/ftp/createCbz', {
+      method: "POST",
+      body: selectedFiles.map(item => item.id)
     })
     loadDirs()
   })

@@ -6,6 +6,7 @@ import com.xiaobin.home.entity.FileUploadProgress;
 import com.xiaobin.home.exception.SimpleBizException;
 import com.xiaobin.home.repository.FileUploadProgressDao;
 import com.xiaobin.home.repository.FilesDao;
+import com.xiaobin.home.repository.LogsDao;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,8 @@ public class FileUploadService {
     private FilesDao filesDao;
     @Autowired
     private FileService fileService;
+    @Autowired
+    private LogsDao logsDao;
 
     public void finishUpload(FileUploadProgress progress, Integer userId, Long foldId) {
         if (progress.getTotalChunk() - 1 == progress.getCurrentChunk()) {
@@ -68,6 +71,8 @@ public class FileUploadService {
                     files.setStatus(FileStatusConstant.INIT);
                     this.filesDao.save( files);
                     this.fileService.saveSample(files);
+                    // 插入log
+                    this.logsDao.addLog("文件上传成功", files.getName(), files.getUserId());
                 }
             }
             progress.setStoreFlag(true);
