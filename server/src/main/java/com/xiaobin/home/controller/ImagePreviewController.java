@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RequestMapping("/image-preview")
@@ -66,7 +67,7 @@ public class ImagePreviewController {
             history.setFileId(files.getId());
             this.playHistoryService.replaceHistory(history);
         }
-        return ApiResponse.ok(Map.of("sort", files.getSort(), "img", img, "fileId", files.getId(), "fileType", files.getFileType()));
+        return ApiResponse.ok(Map.of("sort", Objects.requireNonNullElse(files.getSort(), files.getId()), "img", img, "fileId", files.getId(), "fileType", files.getFileType()));
     }
 
     @PostMapping("/next")
@@ -74,6 +75,7 @@ public class ImagePreviewController {
         UserFtpCache ftpCache = loginService.getFtpCache();
         Integer userId = this.loginService.getLoginId();
         Files curFiles = this.filesDao.loadById(ftpCache.getCurFileId(), userId);
+        if(ftpCache.getCurFileId() == null) return ApiResponse.ok();
         Files files;
         if (curFiles.getSort() != null) {
             files = this.filesDao.loadNextImageInFold(ftpCache.currentFoldId(), curFiles.getSort(), userId);

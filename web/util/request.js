@@ -1,6 +1,6 @@
 import { ENV } from "../config/env.js"
 
-const CHUNK_SIZE = 20 * 1024 * 1024; // 每片 xMB
+const CHUNK_SIZE = 10 * 1024 * 1024; // 每片 xMB
 
 export const baseUrl = ENV.BASE_URL
 

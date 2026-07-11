@@ -1093,7 +1093,7 @@ public class FileService {
         List<Path> allFiles = new ArrayList<>();
         this.loadFolds(fileIds, userId, allFiles);
 
-        List<Files> files = this.filesDao.loadFilesByFoldIds(fileIds, userId);
+        List<Files> files = this.filesDao.loadFilesByIds(fileIds, userId);
         if (!files.isEmpty()) {
             for (Files file : files) {
                 if (StringUtils.isEmpty(file.getStoragePath())) continue;

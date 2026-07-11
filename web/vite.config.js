@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
-    base: './',
+    base: '/',
     build: {
       outDir: 'dist', // 输出目录
       assetsDir: 'static', // 静态资源目录名
@@ -32,7 +32,9 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: resolve(__dirname, 'index.html'),
-          login: resolve(__dirname, 'login.html')
+          login: resolve(__dirname, 'login.html'),
+          video_play: resolve(__dirname, 'page/videoPlay.html'),
+          image_preview: resolve(__dirname, 'page/imagePreview.html'),
         },
         output: {
           // 控制输出文件名格式

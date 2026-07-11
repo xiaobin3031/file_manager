@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RequestMapping("/file-upload")
@@ -137,8 +136,8 @@ public class FileUploadController {
             return ApiResponse.error("文件夹不存在");
         }
 
-        CompletableFuture.runAsync(() -> this.fileUploadService.finishUpload(progress, loginId, folds.getId()));
+        this.fileUploadService.finishUpload(progress, loginId, folds.getId());
 
-        return ApiResponse.ok("正在处理，请稍后再查询结果");
+        return ApiResponse.ok();
     }
 }

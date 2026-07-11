@@ -139,7 +139,7 @@ body {
     }
 
     & .progress-wrapper {
-      width: 100%;
+      flex: 1;
       position: relative;
 
       display: flex;
@@ -188,7 +188,7 @@ body {
 
     & .current-time, & .duration {
       min-width: 50px;
-      max-width: 60px;
+      max-width: 100px;
       overflow: hidden;
       color: white;
 

@@ -47,33 +47,31 @@ public class FileUploadService {
                         throw new SimpleBizException("目录创建失败: " + dir.getAbsolutePath());
                     }
                 }
-                if (!targetFile.exists() || targetFile.length() == 0L) {
-                    try (OutputStream fos = new FileOutputStream(targetFile)) {
-                        byte[] bytes = new byte[5 * 1024];
-                        int read;
-                        File tmpDir = new File(this.ftpConfig.getTmpPath(), progress.getUploadId());
-                        for (int i = 0; i < progress.getTotalChunk(); i++) {
-                            File tmpFile = new File(tmpDir, i + ".part");
-                            if (!tmpFile.exists()) {
-                                throw new SimpleBizException("分片 " + i + " 不存在");
-                            }
-                            try (InputStream fis = new FileInputStream(tmpFile)) {
-                                while ((read = fis.read(bytes)) != -1) {
-                                    fos.write(bytes, 0, read);
-                                }
+                try (OutputStream fos = new FileOutputStream(targetFile)) {
+                    byte[] bytes = new byte[5 * 1024];
+                    int read;
+                    File tmpDir = new File(this.ftpConfig.getTmpPath(), progress.getUploadId());
+                    for (int i = 0; i < progress.getTotalChunk(); i++) {
+                        File tmpFile = new File(tmpDir, i + ".part");
+                        if (!tmpFile.exists()) {
+                            throw new SimpleBizException("分片 " + i + " 不存在");
+                        }
+                        try (InputStream fis = new FileInputStream(tmpFile)) {
+                            while ((read = fis.read(bytes)) != -1) {
+                                fos.write(bytes, 0, read);
                             }
                         }
-                        fos.flush();
-                    } catch (IOException e) {
-                        log.error("合并文件[{}]失败: {}", targetFile.getAbsolutePath(), e.getMessage());
-                        throw new SimpleBizException("合并文件失败");
                     }
-                    files.setStatus(FileStatusConstant.INIT);
-                    this.filesDao.save( files);
-                    this.fileService.saveSample(files);
-                    // 插入log
-                    this.logsDao.addLog("文件上传成功", files.getName(), files.getUserId());
+                    fos.flush();
+                } catch (IOException e) {
+                    log.error("合并文件[{}]失败: {}", targetFile.getAbsolutePath(), e.getMessage());
+                    throw new SimpleBizException("合并文件失败");
                 }
+                files.setStatus(FileStatusConstant.INIT);
+                this.filesDao.save( files);
+                this.fileService.saveSample(files);
+                // 插入log
+                this.logsDao.addLog("文件上传成功", files.getName(), files.getUserId());
             }
             progress.setStoreFlag(true);
             this.fileUploadProgressDao.save(progress);

@@ -187,7 +187,7 @@ function parseTime(time) {
   minute = parseInt(time / 60)
   hour = parseInt(minute / 60)
   if(hour > 0) {
-    minute = time % 60
+    minute = parseInt(time % 60)
     return `${formatTime(hour)}:${formatTime(minute)}:${formatTime(second)}`
   }else{
     return `${formatTime(minute)}:${formatTime(second)}`
