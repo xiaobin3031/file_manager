@@ -19,3 +19,8 @@ logging:
   level:
     root: info
     com.xiaobin.home: debug
+
+
+tiny-orm:
+  entity-packages:
+    - com.xiaobin.home.entity
