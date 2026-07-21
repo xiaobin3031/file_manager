@@ -43,7 +43,7 @@ public class MediaStreamController {
             @RequestParam("fileId") Long fileId,
             @RequestParam("token") String token,
             HttpServletRequest request, HttpServletResponse response) {
-        UserFtpCache ftpCache = this.loginService.getFtpCache(token);
+        UserFtpCache ftpCache = this.loginService.getFtpCache(token, null);
         int loginId = this.loginService.getLoginUser(token).getId();
         com.xiaobin.home.entity.Files files = this.filesDao.loadFileInFold(ftpCache.currentFoldId(), fileId, loginId);
         if (files == null) {

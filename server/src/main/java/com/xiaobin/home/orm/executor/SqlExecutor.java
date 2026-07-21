@@ -2,6 +2,7 @@ package com.xiaobin.home.orm.executor;
 
 import com.xiaobin.home.orm.entity.EntityMapper;
 import com.xiaobin.home.orm.entity.EntityMeta;
+import com.xiaobin.home.orm.entity.SaveResult;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,28 @@ public class SqlExecutor {
 
     public SqlExecutor(DataSource dataSource) {
         this.dataSource = dataSource;
+    }
+
+    public SaveResult save(String sql, Object... params) {
+        Connection conn = DataSourceUtils.getConnection(this.dataSource);
+        try (PreparedStatement ps = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+            for (int i = 0; i < params.length; i++) {
+                ps.setObject(i + 1, params[i]);
+            }
+            int rows = ps.executeUpdate();
+
+            Long id = null;
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    id = rs.getLong(1);
+                }
+            }
+            return new SaveResult(rows, id);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            DataSourceUtils.releaseConnection(conn, this.dataSource);
+        }
     }
 
     public int update(String sql, Object... params) {
@@ -51,6 +74,22 @@ public class SqlExecutor {
                 }
             }
             return result;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean exist(String sql, Object... params) {
+        Connection conn = DataSourceUtils.getConnection(this.dataSource);
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if (params != null && params.length > 0) {
+                for (int i = 0; i < params.length; i++) {
+                    ps.setObject(i + 1, params[i]);
+                }
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

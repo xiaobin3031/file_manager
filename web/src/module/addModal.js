@@ -169,7 +169,7 @@ const buildAddModalBody = () => {
   })
 
   $('.tab-4 .download-url-input button', $body).addEventListener('click', async(e) => {
-    const val = e.currentTarget.previousElementSibling.value
+    let val = e.currentTarget.previousElementSibling.value
     const xpath_val = $('.tab-4 .xpath-input textarea').value
     if(!val.trim() || !xpath_val?.trim()) return
     val = val.trim()

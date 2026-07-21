@@ -1,4 +1,4 @@
-package com.xiaobin.home.entity;
+package com.xiaobin.home.node.entity;
 
 import com.xiaobin.home.orm.annotation.Id;
 import lombok.Getter;

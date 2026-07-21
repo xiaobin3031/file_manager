@@ -1,9 +1,11 @@
 package com.xiaobin.home.service;
 
 import com.xiaobin.home.config.FtpConfig;
+import com.xiaobin.home.constant.Constant;
 import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.dto.FtpDirsDTO;
 import com.xiaobin.home.dto.FtpRequestDTO;
+import com.xiaobin.home.dto.StorageLocation;
 import com.xiaobin.home.dto.TmpFileDTO;
 import com.xiaobin.home.dto.login.UserFtpCache;
 import com.xiaobin.home.entity.DictManager;
@@ -11,9 +13,15 @@ import com.xiaobin.home.entity.Files;
 import com.xiaobin.home.entity.Folds;
 import com.xiaobin.home.exception.BizException;
 import com.xiaobin.home.exception.SimpleBizException;
+import com.xiaobin.home.node.NodePermissionService;
+import com.xiaobin.home.node.NodeService;
+import com.xiaobin.home.node.entity.FmNode;
+import com.xiaobin.home.node.entity.FmStorage;
+import com.xiaobin.home.orm.Orm;
 import com.xiaobin.home.repository.DictManagerDao;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.FoldsDao;
+import com.xiaobin.home.storage.StorageService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -36,6 +45,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -63,6 +73,14 @@ public class FileService {
     private DictManagerDao dictManagerDao;
     @Autowired
     private Environment environment;
+    @Autowired
+    private Orm orm;
+    @Autowired
+    private StorageService storageService;
+    @Autowired
+    private NodeService nodeService;
+    @Autowired
+    private NodePermissionService nodePermissionService;
 
     @PostConstruct
     public void fillFileType() {
@@ -369,13 +387,6 @@ public class FileService {
         }
     }
 
-    public String generateFileDownloadToken(boolean prepareForPlay, Files files, Integer userId) {
-        String token = UUID.randomUUID().toString().replaceAll("-", "");
-        userFileCache.put(userId, token);
-        fileTokenCache.put(token, files);
-        return token;
-    }
-
     public Files readFileFromCache(String token) {
         return fileTokenCache.get(token);
     }
@@ -384,40 +395,24 @@ public class FileService {
      * 不能转移到物理目录
      */
     @Transactional
-    public void batchMoveFile(List<FtpDirsDTO> ftpFiles, Long toFoldId, UserFtpCache ftpCache, Integer userId) {
+    public void batchMoveFile(List<FtpDirsDTO> ftpFiles, Long toFoldId, UserFtpCache ftpCache) {
         if (ftpFiles != null && !ftpFiles.isEmpty()) {
-            Long curFoldId = ftpCache.currentFoldId();
-            int movedFileCount = 0, movedFoldCount = 0;
-            for (FtpDirsDTO file : ftpFiles) {
-                Folds targetFolds = this.foldsDao.findByIdAndUserIdAndDeletedFalse(toFoldId, userId);
-                if (targetFolds == null) continue;
-
-                if (file.isFileFlag()) {
-                    Files files = this.filesDao.loadFileInFold(curFoldId, file.getId(), userId);
-                    if (files != null && !Objects.equals(files.getFoldId(), toFoldId)) {
-                        files.setFoldId(targetFolds.getId());
-                        files.setUpdateAt(LocalDateTime.now());
-                        files.setSampleStatus(0);
-                        this.filesDao.save(files);
-                        movedFileCount++;
-                        CompletableFuture.runAsync(() -> saveSample(files));
-                    }
-                } else {
-                    Folds folds = this.foldsDao.loadFoldInFold(curFoldId, file.getId(), userId);
-                    if (folds != null && !Objects.equals(folds.getParentId(), toFoldId)) {
-                        folds.setParentId(targetFolds.getId());
-                        movedFoldCount++;
-                        this.foldsDao.save(folds);
-                    }
+            FmNode fold = this.nodeService.get(toFoldId);
+            if (fold == null || !Constant.isFold(fold.getNodeType())) {
+                throw new SimpleBizException("target fold invalid");
+            }
+            List<FmNode> nodeList = this.orm.of(FmNode.class).in(FmNode::getId, ftpFiles.stream().map(FtpDirsDTO::getId).toList())
+                    .eq(FmNode::getParentId, ftpCache.currentFoldId())
+                    .eq(FmNode::getOwnerId, ftpCache.getLoginId())
+                    .eq(FmNode::getDeleted, 0)
+                    .list();
+            nodeList = this.nodePermissionService.filterPermissions(nodeList, ftpCache.getLoginId());
+            if (nodeList.isEmpty()) return;
+            for (FmNode fmNode : nodeList) {
+                fmNode.setParentId(toFoldId);
+                if (!this.nodeService.update(fmNode)) {
+                    throw new RuntimeException("move file error");
                 }
-            }
-            if (movedFileCount > 0) {
-                this.foldsDao.updateFileCount(toFoldId, movedFileCount, userId);
-                this.foldsDao.updateFileCount(curFoldId, -movedFileCount, userId);
-            }
-            if (movedFileCount > 0) {
-                this.foldsDao.updateFoldCount(toFoldId, movedFoldCount, userId);
-                this.foldsDao.updateFoldCount(curFoldId, -movedFoldCount, userId);
             }
         }
     }
@@ -464,23 +459,19 @@ public class FileService {
             return;
         }
         File targetFile = new File(foldDir, srcFile.getName());
-        if (!targetFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(srcFile)) {
-                try (FileOutputStream fos = new FileOutputStream(targetFile)) {
-                    byte[] bytes = new byte[4096];
-                    int read;
-                    while ((read = fis.read(bytes)) != -1) {
-                        fos.write(bytes, 0, read);
-                    }
-                }
-                addFile(toFoldId, targetFile, userId);
-                log.info("move physics file success: {}", targetFile.getAbsolutePath());
-            } catch (Exception e) {
-                log.error("move file[{}] to [{}] error: {}", srcFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage());
+        try (FileInputStream fis = new FileInputStream(srcFile); FileOutputStream fos = new FileOutputStream(targetFile)) {
+            byte[] bytes = new byte[4096];
+            int read;
+            while ((read = fis.read(bytes)) != -1) {
+                fos.write(bytes, 0, read);
             }
-
-        } else {
+            fos.flush();
+            FmNode parent = new FmNode();
+            parent.setId(toFoldId);
             addFile(toFoldId, targetFile, userId);
+            log.info("move physics file success: {}", targetFile.getAbsolutePath());
+        } catch (Exception e) {
+            throw new SimpleBizException("move file[%s] to [%s] error: %s".formatted(srcFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
         }
     }
 
@@ -894,30 +885,21 @@ public class FileService {
     }
 
     @Transactional
-    public void batchRename(List<FtpRequestDTO> list, Long foldId, Integer userId) {
-        for (FtpRequestDTO dto : list) {
-            this.rename(dto, foldId, userId);
-        }
-    }
-
-    private void rename(FtpRequestDTO dto, Long foldId, Integer userId) {
-        if (dto.isFileFlag()) {
-            Files files = this.filesDao.loadFilesByNameInFold(foldId, dto.getNewName(), userId);
-            if (files == null) {
-                files = this.filesDao.loadFileInFold(foldId, dto.getId(), userId);
-                if (files != null && !files.getName().equals(dto.getNewName())) {
-                    files.setName(dto.getNewName());
-                    files.setUpdateAt(LocalDateTime.now());
-                    this.filesDao.save(files);
-                }
-            }
-        } else {
-            Folds folds = this.foldsDao.loadFoldsByNameInFold(dto.getNewName(), foldId, userId);
-            if (folds == null) {
-                folds = this.foldsDao.loadFoldInFold(foldId, dto.getId(), userId);
-                if (folds != null && !folds.getName().equals(dto.getNewName())) {
-                    folds.setName(dto.getNewName());
-                    this.foldsDao.save(folds);
+    public void batchRename(List<FtpRequestDTO> list, UserFtpCache ftpCache) {
+        List<FmNode> nodeList = this.orm.of(FmNode.class).in(FmNode::getId, list.stream().map(FtpRequestDTO::getId).toList())
+                .eq(FmNode::getParentId, ftpCache.currentFoldId())
+                .eq(FmNode::getOwnerId, ftpCache.getLoginId())
+                .eq(FmNode::getDeleted, 0)
+                .list();
+        nodeList = this.nodePermissionService.filterPermissions(nodeList, ftpCache.getLoginId());
+        if (nodeList.isEmpty()) return;
+        Map<Long, String> fileIdNameMap = list.stream().collect(Collectors.toMap(FtpRequestDTO::getId, FtpRequestDTO::getNewName, (k1, k2) -> k2));
+        for (FmNode fmNode : nodeList) {
+            String s = fileIdNameMap.get(fmNode.getId());
+            if (s != null) {
+                fmNode.setNodeName(s);
+                if (!this.nodeService.update(fmNode)) {
+                    throw new SimpleBizException("名称更新失败");
                 }
             }
         }
@@ -1121,5 +1103,39 @@ public class FileService {
         String name = path.getFileName().toString();
         int i = name.lastIndexOf('.');
         return i == -1 ? "" : name.substring(i);
+    }
+
+    @Transactional
+    public void uploadFile(Long foldId, MultipartFile file, Integer loginId) {
+        File foldDir = new File(this.getRootPath(), String.valueOf(foldId));
+        if (!foldDir.exists() && !foldDir.mkdirs()) {
+            throw new SimpleBizException("fold create error");
+        }
+        File realFile = new File(foldDir, Objects.requireNonNullElse(file.getOriginalFilename(), UUID.randomUUID().toString()));
+        FmStorage fmStorage = new FmStorage();
+        fmStorage.setPath(realFile.getAbsolutePath());
+        fmStorage.setCreateTime(LocalDateTime.now());
+        fmStorage.setMimeType(this.getFileType(realFile.getName()));
+        fmStorage.setSize(file.getSize());
+        if (this.orm.save(fmStorage) == 0) {
+            throw new SimpleBizException("upload file error");
+        }
+        StorageLocation location = new StorageLocation("", realFile.getAbsolutePath());
+        try (OutputStream fos = this.storageService.create(location)) {
+            fos.write(file.getBytes());
+            fos.flush();
+        } catch (IOException e) {
+            log.error("upload file error", e);
+            throw new SimpleBizException("upload file error");
+        }
+        FmNode fmNode = new FmNode();
+        fmNode.setNodeType(Constant.NODE_TYPE_FILE);
+        fmNode.setNodeName(realFile.getName());
+        fmNode.setOwnerId(loginId);
+        fmNode.setParentId(foldId);
+        fmNode.setStorageId(fmStorage.getId());
+        if (this.orm.save(fmNode) == 0) {
+            throw new SimpleBizException("upload file error");
+        }
     }
 }

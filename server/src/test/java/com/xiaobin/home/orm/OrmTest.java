@@ -1,7 +1,7 @@
 package com.xiaobin.home.orm;
 
 import com.xiaobin.home.HomeApplication;
-import com.xiaobin.home.entity.FmNode;
+import com.xiaobin.home.node.entity.FmNode;
 import com.xiaobin.home.orm.query.OrmQuery;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ public class OrmTest {
 
     @Test
     public void testQuery() {
-        OrmQuery<FmNode> query = new OrmQuery<>(FmNode.class);
+        OrmQuery<FmNode> query = new OrmQuery<>(FmNode.class, orm);
         query.eq(FmNode::getNodeName, "test");
 
         FmNode one = orm.getOne(query);
@@ -39,7 +39,7 @@ public class OrmTest {
 
     @Test
     public void testUpdate() {
-        OrmQuery<FmNode> query = new OrmQuery<>(FmNode.class);
+        OrmQuery<FmNode> query = new OrmQuery<>(FmNode.class, orm);
         query.eq(FmNode::getNodeName, "test");
 
         FmNode one = orm.getOne(query);
@@ -48,7 +48,7 @@ public class OrmTest {
         one.setNodeName("test2");
         this.orm.updateById(one);
 
-        query = new OrmQuery<>(FmNode.class);
+        query = new OrmQuery<>(FmNode.class, orm);
         query.eq(FmNode::getNodeName, "test2");
 
         one = orm.getOne(query);

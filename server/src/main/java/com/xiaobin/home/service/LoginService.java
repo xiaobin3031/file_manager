@@ -8,6 +8,7 @@ import com.xiaobin.home.entity.User;
 import com.xiaobin.home.exception.LoginException;
 import com.xiaobin.home.exception.NotLoginException;
 import com.xiaobin.home.exception.RegisterException;
+import com.xiaobin.home.exception.SimpleBizException;
 import com.xiaobin.home.repository.UserDao;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +37,7 @@ public class LoginService {
     private static final Map<String, LoginUser> loginUserMap = new HashMap<>();
     private static final Map<String, UserFtpCache> userFtpCacheMap = new HashMap<>();
 
-    public Integer getLoginId(){
+    public Integer getLoginId() {
         return getLoginUser().getId();
     }
 
@@ -71,9 +72,9 @@ public class LoginService {
     public LoginUser login(LoginDTO dto) {
         User user = this.userDao.findUserByUsername(dto.getUsername());
         if (user == null) {
-            if(dto.isAgree()){
+            if (dto.isAgree()) {
                 user = this.register(dto.getUsername(), dto.getPassword());
-            }else{
+            } else {
                 throw new LoginException("user not exist");
             }
         }
@@ -139,14 +140,23 @@ public class LoginService {
 
     public UserFtpCache getFtpCache() {
         LoginUser loginUser = getLoginUser();
-        return getFtpCache(loginUser.getToken());
+        return getFtpCache(loginUser.getToken(), loginUser.getId());
     }
 
-    public UserFtpCache getFtpCache(String token) {
+    public UserFtpCache getFtpCache(String token, Integer userId) {
+        if (userId == null) {
+            userId = this.getLoginUser(token).getId();
+        }
+        if (userId == null) {
+            throw new SimpleBizException("not login");
+        }
         UserFtpCache ftpCache = userFtpCacheMap.get(token);
         if (ftpCache == null) {
             ftpCache = new UserFtpCache();
+            ftpCache.setLoginId(userId);
             userFtpCacheMap.put(token, ftpCache);
+        } else if (!userId.equals(ftpCache.getLoginId())) {
+            throw new SimpleBizException("not login");
         }
         return ftpCache;
     }

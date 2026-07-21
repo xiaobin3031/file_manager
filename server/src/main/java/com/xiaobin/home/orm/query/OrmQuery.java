@@ -1,8 +1,12 @@
 package com.xiaobin.home.orm.query;
 
+import com.xiaobin.home.exception.SimpleBizException;
+import com.xiaobin.home.orm.Orm;
 import com.xiaobin.home.orm.annotation.SFunction;
+import com.xiaobin.home.orm.entity.ColumnMeta;
 import com.xiaobin.home.orm.entity.EntityManager;
 import com.xiaobin.home.orm.entity.EntityMeta;
+import com.xiaobin.home.orm.entity.IPage;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
@@ -15,22 +19,29 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class OrmQuery<T> {
+public class OrmQuery<T, SELF extends OrmQuery<T, SELF>> {
 
     @Getter
-    private final EntityMeta entityMeta;
+    protected final EntityMeta entityMeta;
     @Getter
     private final List<Object> values;
+    protected final StringBuilder where = new StringBuilder();
+    protected final Orm orm;
     private final List<String> groupBy = new ArrayList<>();
     private final List<String> orderBy = new ArrayList<>();
-    private final StringBuilder where = new StringBuilder();
     private Integer offset;
-
     private Integer limit;
+    private String column = "*";
 
-    public OrmQuery(Class<T> cls) {
+    @SuppressWarnings("unchecked")
+    protected SELF self() {
+        return (SELF) this;
+    }
+
+    public OrmQuery(Class<T> cls, Orm orm) {
         this.entityMeta = EntityManager.getEntityMeta(cls);
         this.values = new ArrayList<>();
+        this.orm = orm;
     }
 
     public void addGroup(String group) {
@@ -39,6 +50,18 @@ public class OrmQuery<T> {
 
     public void addOrderBy(String orderBy) {
         this.orderBy.add(orderBy);
+    }
+
+    public SELF orderByDesc(SFunction<T, ?> func) {
+        String column = this.resolveSFunction(func);
+        this.orderBy.add(column + " desc");
+        return self();
+    }
+
+    public SELF orderByAsc(SFunction<T, ?> func) {
+        String column = this.resolveSFunction(func);
+        this.orderBy.add(column + " asc");
+        return self();
     }
 
     public String buildGetOneSql() {
@@ -50,6 +73,7 @@ public class OrmQuery<T> {
     public String buildTotalSql() {
         List<String> cachedOrderBy = new ArrayList<>(this.orderBy);
         this.orderBy.clear();
+        this.column = "1";
         String sql = "select count(*) from (" + this.buildSql() + ") a";
         this.orderBy.addAll(cachedOrderBy);
         return sql;
@@ -69,7 +93,7 @@ public class OrmQuery<T> {
         } else if (this.limit != null) {
             this.where.append(" LIMIT ").append(this.limit);
         }
-        return "select * from " + entityMeta.getTable() + " where " + this.where;
+        return "select " + column + " from " + entityMeta.getTable() + " where " + this.where;
     }
 
     public String buildPage(int page, int limit) {
@@ -78,37 +102,78 @@ public class OrmQuery<T> {
         return this.buildSql();
     }
 
-    public OrmQuery<T> eq(SFunction<T, ?> func, Object value) {
+    public String buildExistSql() {
+        this.offset = null;
+        this.limit = 1;
+        this.column = "1";
+        return this.buildSql();
+    }
+
+    public SELF buildQueryByEntity(T t) {
+        try {
+            for (ColumnMeta columnMeta : this.entityMeta.getColumnMetas()) {
+                Object value = columnMeta.getGetter().invoke(t);
+                if (value != null) {
+                    this.appendColumn(columnMeta.getColumnName(), "=", value);
+                }
+            }
+        } catch (Throwable e) {
+            throw new SimpleBizException("查询失败");
+        }
+        return self();
+    }
+
+    public SELF eq(SFunction<T, ?> func, Object value) {
         this.buildCondition(func, "=", value);
-        return this;
+        return self();
     }
 
-    public OrmQuery<T> ne(SFunction<T, ?> func, Object value) {
+    public SELF ne(SFunction<T, ?> func, Object value) {
         this.buildCondition(func, "!=", value);
-        return this;
+        return self();
     }
 
-    public OrmQuery<T> in(SFunction<T, ?> func, Collection<Object> values) {
+    public SELF in(SFunction<T, ?> func, Collection<?> values) {
         this.buildConditions(func, "IN", values);
-        return this;
+        return self();
     }
 
-    public OrmQuery<T> notIn(SFunction<T, ?> func, Collection<Object> values) {
+    public SELF notIn(SFunction<T, ?> func, Collection<Object> values) {
         this.buildConditions(func, "NOT IN", values);
-        return this;
+        return self();
     }
 
-    public OrmQuery<T> isNull(SFunction<T, ?> func) {
-        this.buildCondition(func, "IS NULL");
-        return this;
+    public SELF isNull(SFunction<T, ?> func) {
+        this.buildCondition(func, "IS NULL", null);
+        return self();
     }
 
-    public OrmQuery<T> isNotNull(SFunction<T, ?> func) {
-        this.buildCondition(func, "IS NOT NULL");
-        return this;
+    public SELF isNotNull(SFunction<T, ?> func) {
+        this.buildCondition(func, "IS NOT NULL", null);
+        return self();
     }
 
-    public OrmQuery<T> between(SFunction<T, ?> func, Object value1, Object value2) {
+    public SELF gt(SFunction<T, ?> func, Object value) {
+        this.buildCondition(func, ">", value);
+        return self();
+    }
+
+    public SELF lt(SFunction<T, ?> func, Object value) {
+        this.buildCondition(func, "<", value);
+        return self();
+    }
+
+    public SELF ge(SFunction<T, ?> func, Object value) {
+        this.buildCondition(func, ">=", value);
+        return self();
+    }
+
+    public SELF le(SFunction<T, ?> func, Object value) {
+        this.buildCondition(func, "<=", value);
+        return self();
+    }
+
+    public SELF between(SFunction<T, ?> func, Object value1, Object value2) {
         String column = this.resolveSFunction(func);
         if (!this.values.isEmpty()) {
             this.where.append(" AND ");
@@ -116,10 +181,10 @@ public class OrmQuery<T> {
         this.where.append(column).append(" BETWEEN ? and ?");
         this.values.add(value1);
         this.values.add(value2);
-        return this;
+        return self();
     }
 
-    public OrmQuery<T> notBetween(SFunction<T, ?> func, Object value1, Object value2) {
+    public SELF notBetween(SFunction<T, ?> func, Object value1, Object value2) {
         String column = this.resolveSFunction(func);
         if (!this.values.isEmpty()) {
             this.where.append(" AND ");
@@ -127,27 +192,26 @@ public class OrmQuery<T> {
         this.where.append(column).append(" NOT BETWEEN ? and ?");
         this.values.add(value1);
         this.values.add(value2);
-        return this;
+        return self();
     }
 
     private void buildCondition(SFunction<T, ?> func, String op, Object value) {
         String column = this.resolveSFunction(func);
+        this.appendColumn(column, op, value);
+    }
+
+    private void appendColumn(String column, String op, Object value) {
         if (!this.values.isEmpty()) {
             this.where.append(" AND ");
         }
         this.where.append(column).append(" ").append(op).append(" ?");
-        this.values.add(value);
-    }
-
-    private void buildCondition(SFunction<T, ?> func, String op) {
-        String column = this.resolveSFunction(func);
-        if (!this.values.isEmpty()) {
-            this.where.append(" AND ");
+        if (value != null) {
+            this.where.append(" ?");
+            this.values.add(value);
         }
-        this.where.append(column).append(" ").append(op);
     }
 
-    private void buildConditions(SFunction<T, ?> func, String op, Collection<Object> values) {
+    private void buildConditions(SFunction<T, ?> func, String op, Collection<?> values) {
         String column = this.resolveSFunction(func);
         if (!this.values.isEmpty()) {
             this.where.append(" AND ");
@@ -156,7 +220,7 @@ public class OrmQuery<T> {
         this.values.addAll(values);
     }
 
-    private String resolveSFunction(Serializable lambda) {
+    protected String resolveSFunction(Serializable lambda) {
         try {
             Method method = lambda.getClass().getDeclaredMethod("writeReplace");
             method.setAccessible(true);
@@ -166,6 +230,22 @@ public class OrmQuery<T> {
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public T one() {
+        return this.orm.getOne(this);
+    }
+
+    public List<T> list() {
+        return this.orm.getList(this);
+    }
+
+    public IPage<T> page(int page, int limit) {
+        return this.orm.page(this, page, limit);
+    }
+
+    public boolean exist() {
+        return this.orm.exist(this);
     }
 
 }

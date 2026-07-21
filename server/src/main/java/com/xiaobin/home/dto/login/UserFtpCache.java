@@ -4,13 +4,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Getter
 @Setter
 public class UserFtpCache {
+
+    private static final Map<String, Long> fileTokenMap = new HashMap<>();
 
     private List<String> path = new ArrayList<>();
 
@@ -30,13 +30,16 @@ public class UserFtpCache {
      */
     private Long curFileId;
 
+    private Integer loginId;
+
     public long currentFoldId() {
         return foldIds.isEmpty() ? 0L : foldIds.getFirst();
     }
 
-    public String getCurrentPath() {
-        ArrayList<String> tmpPath = new ArrayList<>(path);
-        Collections.reverse(tmpPath);
-        return String.join(File.separator, tmpPath);
+    public String addFileToken(Long nodeId) {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        fileTokenMap.put(token, nodeId);
+        return token;
     }
+
 }

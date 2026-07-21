@@ -3,6 +3,7 @@ package com.xiaobin.home.orm;
 import com.xiaobin.home.orm.entity.*;
 import com.xiaobin.home.orm.executor.SqlExecutor;
 import com.xiaobin.home.orm.query.OrmQuery;
+import com.xiaobin.home.orm.query.OrmUpdate;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,11 @@ public class Orm {
         StringBuilder valueSql = new StringBuilder("VALUES(");
 
         List<Object> values = new ArrayList<>();
+        ColumnMeta idColumnMeta = null;
         for (ColumnMeta columnMeta : entityMeta.getColumnMetas()) {
+            if (columnMeta.isId()) {
+                idColumnMeta = columnMeta;
+            }
             Object invoke = this.invokeValue(columnMeta.getGetter(), entity);
             if (invoke != null) {
                 insertSql.append(columnMeta.getColumnName()).append(",");
@@ -42,7 +47,19 @@ public class Orm {
         else valueSql.append(')');
 
         insertSql.append(" ").append(valueSql);
-        return this.sqlExecutor.update(insertSql.toString(), values.toArray());
+        SaveResult save = this.sqlExecutor.save(insertSql.toString(), values.toArray());
+        if (idColumnMeta != null && save.generatedId() != null) {
+            try {
+                if (Integer.class.isAssignableFrom(idColumnMeta.getJavaType())) {
+                    idColumnMeta.getSetter().invoke(entity, save.generatedId().intValue());
+                } else {
+                    idColumnMeta.getSetter().invoke(entity, save.generatedId());
+                }
+            } catch (Throwable e) {
+                throw new RuntimeException("set id value error");
+            }
+        }
+        return save.rows();
     }
 
     public <T> int updateById(T entity) {
@@ -77,28 +94,45 @@ public class Orm {
         return this.sqlExecutor.update(updateSql.toString(), values.toArray());
     }
 
+    public <T> int update(OrmUpdate<T> ormUpdate) {
+        String sql = ormUpdate.buildSql();
+        List<Object> values = ormUpdate.getSetValues();
+        if (values.isEmpty()) {
+            throw new RuntimeException("set values is empty");
+        }
+        if (ormUpdate.getValues().isEmpty()) {
+            throw new RuntimeException("where values is empty");
+        }
+        values.addAll(ormUpdate.getValues());
+        return this.sqlExecutor.update(sql, values.toArray());
+    }
+
     public int delete(Class<?> clazz, Object... ids) {
         return 0;
     }
 
-    public <T> OrmQuery<T> of(Class<T> cls) {
-        return new OrmQuery<>(cls);
+    public <T> OrmQuery<T, ?> of(Class<T> cls) {
+        return new OrmQuery<>(cls, this);
     }
 
-    public <T> T getOne(OrmQuery<T> query) {
+    public <T> OrmUpdate<T> ofUpdate(Class<T> cls) {
+        return new OrmUpdate<>(cls, this);
+    }
+
+    public <T> T getOne(OrmQuery<T, ?> query) {
         String s = query.buildGetOneSql();
         List<Object> values = query.getValues();
         List<T> list = this.sqlExecutor.query(s, this.entityMapper, query.getEntityMeta(), values.toArray(new Object[0]));
         return list.isEmpty() ? null : list.getFirst();
     }
 
-    public <T> List<T> getList(OrmQuery<T> query) {
+    public <T> List<T> getList(OrmQuery<T, ?> query) {
         String s = query.buildGetOneSql();
         List<Object> values = query.getValues();
         return this.sqlExecutor.query(s, this.entityMapper, query.getEntityMeta(), values.toArray(new Object[0]));
     }
 
-    public <T> IPage<T> page(OrmQuery<T> query, int page, int limit) {
+    public <T> IPage<T> page(OrmQuery<T, ?> query, int page, int limit) {
         String sql = query.buildTotalSql();
         int total = this.sqlExecutor.queryTotal(sql, query.getValues());
         IPage<T> iPage = new IPage<>(total, page, limit);
@@ -109,6 +143,11 @@ public class Orm {
             iPage.setRecords(list);
         }
         return iPage;
+    }
+
+    public boolean exist(OrmQuery<?, ?> query) {
+        String sql = query.buildExistSql();
+        return this.sqlExecutor.exist(sql, query.getValues().toArray());
     }
 
     private Object invokeValue(MethodHandle getMethod, Object entity) {

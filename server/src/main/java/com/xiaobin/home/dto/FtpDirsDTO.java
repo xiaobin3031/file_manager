@@ -27,7 +27,6 @@ public class FtpDirsDTO {
     /**
      * 预览图
      */
-    private String sample;
     private String fileType;
 
     /**
