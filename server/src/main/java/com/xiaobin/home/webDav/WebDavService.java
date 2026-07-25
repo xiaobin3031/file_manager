@@ -22,6 +22,8 @@ import java.util.List;
 @Slf4j
 public class WebDavService {
 
+    private static final List<String> PERMIT_FOLD_NAME = List.of("动漫", "电影", "电视剧", "纪录片", "综艺", "短剧");
+
     private final Integer userId = 1;
     @Autowired
     private FoldsDao foldsDao;
@@ -34,7 +36,7 @@ public class WebDavService {
     public WebDavPath stat(String path) {
         log.info("stat path:{}", path);
         String[] paths = path.split("/");
-        if (paths.length < 2) {
+        if (path.isEmpty()) {
             WebDavPath webDavPath = new WebDavPath();
             webDavPath.setPath("");
             webDavPath.setName("root");
@@ -67,12 +69,19 @@ public class WebDavService {
         log.info("list path:{}", path);
         String[] paths = path.split("/");
         List<WebDavPath> list = new ArrayList<>();
-        if (path.length() < 2) {
-            List<Folds> folds = this.foldsDao.loadFolds(0L, userId);
+        if (path.isEmpty()) {
+            List<Folds> folds = PERMIT_FOLD_NAME.stream().map(a -> {
+                Folds ff = new Folds();
+                ff.setName(a);
+                return ff;
+            }).toList();
             for (Folds fold : folds) {
                 list.add(this.foldsConvertPath(fold, path));
             }
         } else {
+            if (!PERMIT_FOLD_NAME.contains(paths[0])) {
+                return List.of();
+            }
             String lastName = paths[paths.length - 1];
             Folds folds = this.foldsDao.findFoldsByNameAndUserIdAndDeletedFalse(lastName, userId);
             if (folds != null) {
@@ -102,7 +111,7 @@ public class WebDavService {
         WebDavPath webDavPath = new WebDavPath();
         webDavPath.setPath(path + "/" + folds.getName());
         webDavPath.setName(folds.getName());
-        webDavPath.setSize(folds.getFileCount() + folds.getFoldCount());
+        // webDavPath.setSize(folds.getFileCount() + folds.getFoldCount());
         webDavPath.setModifyTime(Calendar.getInstance().getTime());
         webDavPath.setDirectory(true);
         return webDavPath;
