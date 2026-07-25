@@ -25,4 +25,7 @@ public class FmNode {
     private Boolean hidden;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+
+    private Short status;
+
 }

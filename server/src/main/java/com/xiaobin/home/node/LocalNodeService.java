@@ -31,6 +31,9 @@ public class LocalNodeService implements NodeService {
 
     @Override
     public FmNode create(FmNode fmNode) {
+        FmNode one = this.orm.of(FmNode.class).eq(FmNode::getNodeName, fmNode.getNodeName()).eq(FmNode::getParentId, fmNode.getParentId()).one();
+        if(one != null) return one;
+
         if (fmNode.getUpdateTime() == null) fmNode.setUpdateTime(LocalDateTime.now());
         if (fmNode.getCreateTime() == null) fmNode.setCreateTime(LocalDateTime.now());
         this.orm.save(fmNode);

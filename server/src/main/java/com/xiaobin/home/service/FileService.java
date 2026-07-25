@@ -43,8 +43,6 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -56,7 +54,6 @@ public class FileService {
     private static final Map<String, Files> fileTokenCache = new HashMap<>();
     private static final Map<Integer, String> userFileCache = new HashMap<>();
     private static final List<Long> toUnzipFiles = new LinkedList<>();
-    private static final Lock lock = new ReentrantLock();
     private static DictManager activeDictManager;
 
     private static boolean unzipFlag = false;
@@ -417,7 +414,6 @@ public class FileService {
         }
     }
 
-    @Transactional
     public void batchMovePhysicsFile(List<FtpDirsDTO> ftpFiles, Long toFoldId, UserFtpCache ftpCache, Integer userId) {
         if (ftpFiles != null && !ftpFiles.isEmpty()) {
             Folds targetFolds = this.foldsDao.findByIdAndUserIdAndDeletedFalse(toFoldId, userId);
@@ -466,13 +462,25 @@ public class FileService {
                 fos.write(bytes, 0, read);
             }
             fos.flush();
-            FmNode parent = new FmNode();
-            parent.setId(toFoldId);
             addFile(toFoldId, targetFile, userId);
             log.info("move physics file success: {}", targetFile.getAbsolutePath());
         } catch (Exception e) {
             throw new SimpleBizException("move file[%s] to [%s] error: %s".formatted(srcFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
         }
+        FmStorage fmStorage = new FmStorage();
+        fmStorage.setRefCount(0);
+        fmStorage.setPath(targetFile.getAbsolutePath());
+        fmStorage.setMimeType(this.getFileType(targetFile.getName()));
+        fmStorage.setSize(targetFile.length());
+        fmStorage.setCreateTime(LocalDateTime.now());
+        this.orm.save(fmStorage);
+        FmNode fmNode = new FmNode();
+        fmNode.setParentId(toFoldId);
+        fmNode.setOwnerId(userId);
+        fmNode.setNodeType(Constant.NODE_TYPE_FILE);
+        fmNode.setNodeName(srcFile.getName());
+        fmNode.setStorageId(fmStorage.getId());
+        this.nodeService.create(fmNode);
     }
 
     public void movePhysicsDir(Long toFoldId, File srcFold, Integer userId) {
@@ -606,12 +614,12 @@ public class FileService {
     public void sortFiles(List<FtpDirsDTO> ftpFiles, UserFtpCache ftpCache) {
         for (FtpDirsDTO ftpFile : ftpFiles) {
             if (ftpFile.getSort() == null) continue;
-
-            if (ftpFile.isFileFlag()) {
-                this.filesDao.updateSortById(ftpCache.currentFoldId(), ftpFile.getId(), this.loginService.getLoginId(), ftpFile.getSort());
-            } else {
-                this.foldsDao.updateSortById(ftpCache.currentFoldId(), ftpFile.getId(), this.loginService.getLoginId(), ftpFile.getSort());
-            }
+            this.orm.ofUpdate(FmNode.class).eq(FmNode::getId, ftpFile.getId())
+                    .eq(FmNode::getOwnerId, ftpCache.getLoginId())
+                    .eq(FmNode::getDeleted, 0)
+                    .set(FmNode::getSort, ftpFile.getSort())
+                    .set(FmNode::getUpdateTime, LocalDateTime.now())
+                    .update();
         }
     }
 
@@ -638,20 +646,31 @@ public class FileService {
             try {
                 while (!toUnzipFiles.isEmpty()) {
                     Long fileId = toUnzipFiles.removeFirst();
-                    lock.lock();
                     log.info("开始解压：{}", fileId);
                     try {
+                        FmNode fmNode = this.nodeService.get(fileId);
+                        if (fmNode != null && FileStatusConstant.isUnzip(fmNode.getStatus())) {
+                            if (Constant.isFile(fmNode.getStatus())) {
+                                FmStorage fmStorage = this.orm.of(FmStorage.class).eq(FmStorage::getId, fmNode.getStorageId()).one();
+                                this.unzipZipShell(fmNode, fmStorage);
+                            } else if (Constant.isFold(fmNode.getStatus())) {
+                                this.orm.ofUpdate(FmNode.class)
+                                        .set(FmNode::getParentId, fmNode.getParentId())
+                                        .eq(FmNode::getParentId, fmNode.getId())
+                                        .eq(FmNode::getOwnerId, fmNode.getOwnerId())
+                                        .eq(FmNode::getDeleted, 0)
+                                        .update();
+                            } else {
+                                fmNode.setStatus(FileStatusConstant.INIT);
+                                this.nodeService.update(fmNode);
+                            }
+                        }
                         this.filesDao.findById(fileId)
                                 .filter(a -> FileStatusConstant.isUnzip(a.getStatus()))
                                 .ifPresent(files -> {
-                                    if ("application/zip".equals(files.getFileType()) || "application/x-7z-compressed".equals(files.getFileType())) {
-                                        this.unzipZipShell(files, files.getFoldId(), files.getUserId());
-                                    }
                                 });
                     } catch (Exception e) {
                         log.error("解压失败: {}", e.getMessage(), e);
-                    } finally {
-                        lock.unlock();
                     }
                 }
                 log.info("解压结束");
@@ -664,47 +683,33 @@ public class FileService {
     @Transactional
     public void unzip(List<Long> fileIds, Long curFoldId, Integer userId) {
         List<Long> toUnzips = new ArrayList<>();
-        int zippedFileCount = 0, zippedFoldCount = 0;
-        List<Long> unzippedFolds = new ArrayList<>();
-        for (Long fileId : fileIds) {
-            Files files = this.filesDao.loadFileInFold(curFoldId, fileId, userId);
-            if (files == null) {
-                Folds folds = this.foldsDao.loadFoldInFold(curFoldId, fileId, userId);
-                if (folds != null) {
-                    this.filesDao.changeFold(curFoldId, folds.getId(), userId);
-                    this.foldsDao.changeFold(curFoldId, folds.getId(), userId);
-                    zippedFileCount += folds.getFileCount();
-                    zippedFoldCount += folds.getFoldCount();
-                    unzippedFolds.add(folds.getId());
-                    continue;
-                }
-                throw new SimpleBizException("解压失败");
-            }
-            if (!FileStatusConstant.isFree(files.getStatus())) {
-                log.error("文件[{}]正被锁定: {}", files.getName(), FileStatusConstant.getStatusName(files.getStatus()));
+        List<FmNode> nodeList = this.orm.of(FmNode.class).in(FmNode::getId, fileIds).eq(FmNode::getParentId, curFoldId).eq(FmNode::getOwnerId, userId).list();
+        nodeList = this.nodePermissionService.filterPermissions(nodeList, userId);
+        if (nodeList.isEmpty()) return;
+        for (FmNode fmNode : nodeList) {
+            fmNode.setParentId(curFoldId);
+            fmNode.setStatus(FileStatusConstant.UNZIP);
+            if (!FileStatusConstant.isFree(fmNode.getStatus())) {
+                log.error("文件[{}]正被锁定: {}", fmNode.getNodeName(), FileStatusConstant.getStatusName(fmNode.getStatus()));
                 continue;
             }
-            files.setStatus(FileStatusConstant.UNZIP);
-            this.filesDao.save(files);
-            toUnzips.add(fileId);
+            if (this.nodeService.update(fmNode)) {
+                toUnzips.add(fmNode.getId());
+            }
         }
-        if (zippedFileCount > 0) this.foldsDao.updateFileCount(curFoldId, zippedFileCount, userId);
-        if (zippedFoldCount > 0) this.foldsDao.updateFoldCount(curFoldId, zippedFoldCount, userId);
-        if (!unzippedFolds.isEmpty()) this.foldsDao.clearFoldAndFileCount(unzippedFolds, userId);
         if (!toUnzips.isEmpty()) {
             toUnzipFiles.addAll(toUnzips);
         }
     }
 
-    private void unzipZipShell(Files files, Long curFoldId, Integer userId) {
+    private void unzipZipShell(FmNode fmNode, FmStorage fmStorage) {
+        if (!"application/zip".equals(fmStorage.getMimeType()) && !"application/x-7z-compressed".equals(fmStorage.getMimeType())) {
+            return;
+        }
+        StorageLocation location = new StorageLocation("", fmStorage.getPath());
         try {
-            File zipFilePath = new File(files.getStoragePath());
-            if (!zipFilePath.exists()) {
-                log.error("文件不存在: {}", zipFilePath.getAbsolutePath());
-                return;
-            }
 
-            String name = zipFilePath.getName();
+            String name = fmNode.getNodeName();
             name = name.substring(0, name.lastIndexOf("."));
             File dir = new File(zipFilePath.getParentFile(), name);
             if (!dir.exists() && !dir.mkdirs()) {

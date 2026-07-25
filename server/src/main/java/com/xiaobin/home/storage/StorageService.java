@@ -16,4 +16,7 @@ public interface StorageService {
 
     long size(StorageLocation storageLocation) throws IOException;
 
+    boolean exist(StorageLocation storageLocation) throws IOException;
+
+    void unzip(StorageLocation storageLocation) throws IOException;
 }
