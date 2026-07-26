@@ -71,7 +71,7 @@ public class WebDavFolderResource implements CollectionResource, PropFindableRes
 
     @Override
     public Date getModifiedDate() {
-        return null;
+        return this.p.getModifyTime();
     }
 
     @Override
