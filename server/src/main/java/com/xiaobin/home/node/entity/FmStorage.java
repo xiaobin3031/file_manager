@@ -17,8 +17,6 @@ public class FmStorage {
 
     private Long size;
 
-    private String mimeType;
-
     private String path;
 
     private Integer refCount;

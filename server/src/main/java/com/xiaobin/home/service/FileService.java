@@ -470,7 +470,6 @@ public class FileService {
         FmStorage fmStorage = new FmStorage();
         fmStorage.setRefCount(0);
         fmStorage.setPath(targetFile.getAbsolutePath());
-        fmStorage.setMimeType(this.getFileType(targetFile.getName()));
         fmStorage.setSize(targetFile.length());
         fmStorage.setCreateTime(LocalDateTime.now());
         this.orm.save(fmStorage);
@@ -480,6 +479,7 @@ public class FileService {
         fmNode.setNodeType(Constant.NODE_TYPE_FILE);
         fmNode.setNodeName(srcFile.getName());
         fmNode.setStorageId(fmStorage.getId());
+        fmNode.setMimeType(this.getFileType(targetFile.getName()));
         this.nodeService.create(fmNode);
     }
 
@@ -703,7 +703,7 @@ public class FileService {
     }
 
     private void unzipZipShell(FmNode fmNode, FmStorage fmStorage) {
-        if (!"application/zip".equals(fmStorage.getMimeType()) && !"application/x-7z-compressed".equals(fmStorage.getMimeType())) {
+        if (!"application/zip".equals(fmNode.getMimeType()) && !"application/x-7z-compressed".equals(fmNode.getMimeType())) {
             return;
         }
         StorageLocation location = new StorageLocation("", fmStorage.getPath());
@@ -1120,7 +1120,6 @@ public class FileService {
         FmStorage fmStorage = new FmStorage();
         fmStorage.setPath(realFile.getAbsolutePath());
         fmStorage.setCreateTime(LocalDateTime.now());
-        fmStorage.setMimeType(this.getFileType(realFile.getName()));
         fmStorage.setSize(file.getSize());
         if (this.orm.save(fmStorage) == 0) {
             throw new SimpleBizException("upload file error");
@@ -1139,6 +1138,7 @@ public class FileService {
         fmNode.setOwnerId(loginId);
         fmNode.setParentId(foldId);
         fmNode.setStorageId(fmStorage.getId());
+        fmNode.setMimeType(this.getFileType(realFile.getName()));
         if (this.orm.save(fmNode) == 0) {
             throw new SimpleBizException("upload file error");
         }

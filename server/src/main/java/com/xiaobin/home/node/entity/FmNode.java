@@ -28,4 +28,5 @@ public class FmNode {
 
     private Short status;
 
+    private String mimeType;
 }
