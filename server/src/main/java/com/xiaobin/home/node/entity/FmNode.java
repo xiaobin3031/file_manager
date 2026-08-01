@@ -29,4 +29,7 @@ public class FmNode {
     private Short status;
 
     private String mimeType;
+
+    private Integer downloadId;
+
 }

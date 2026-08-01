@@ -18,7 +18,7 @@ public interface NodeService {
 
     List<FmNode> children(FmNode fmNode);
 
-    boolean addChild(FmNode fmNode, FmNode child);
+    FmNode addChild(FmNode fmNode, FmNode child);
 
     boolean remove(FmNode fmNode);
 

@@ -64,14 +64,17 @@ public class LocalNodeService implements NodeService {
     }
 
     @Override
-    public boolean addChild(FmNode fmNode, FmNode child) {
+    public FmNode addChild(FmNode fmNode, FmNode child) {
         FmNode exist = this.query().eq(FmNode::getParentId, fmNode.getId()).eq(FmNode::getDeleted, 0).eq(FmNode::getNodeName, child.getNodeName()).one();
         if (exist != null) {
             child.setParentId(fmNode.getId());
+            child.setId(exist.getId());
+            this.update(child);
+            return child;
         }
         child.setParentId(fmNode.getId());
         child.setId(null);
-        return this.create(child).getId() != null;
+        return this.create(child);
     }
 
     @Override
@@ -146,7 +149,7 @@ public class LocalNodeService implements NodeService {
     @Override
     public boolean moveTo(FmNode source, FmNode target) {
         if (target.getNodeType() == Constant.NODE_TYPE_FOLDER) {
-            return this.addChild(target, source);
+            this.addChild(target, source);
         }
         return false;
     }

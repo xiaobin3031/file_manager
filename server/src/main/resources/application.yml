@@ -24,3 +24,5 @@ logging:
 tiny-orm:
   entity-packages:
     - com.xiaobin.home.entity
+    - com.xiaobin.home.download.entity
+    - com.xiaobin.home.node.entity

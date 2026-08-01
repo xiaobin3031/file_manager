@@ -30,7 +30,7 @@ public class OrmTest {
 
     @Test
     public void testQuery() {
-        OrmQuery<FmNode> query = new OrmQuery<>(FmNode.class, orm);
+        OrmQuery<FmNode, ?> query = new OrmQuery<>(FmNode.class, orm);
         query.eq(FmNode::getNodeName, "test");
 
         FmNode one = orm.getOne(query);
@@ -39,7 +39,7 @@ public class OrmTest {
 
     @Test
     public void testUpdate() {
-        OrmQuery<FmNode> query = new OrmQuery<>(FmNode.class, orm);
+        OrmQuery<FmNode, ?> query = new OrmQuery<>(FmNode.class, orm);
         query.eq(FmNode::getNodeName, "test");
 
         FmNode one = orm.getOne(query);

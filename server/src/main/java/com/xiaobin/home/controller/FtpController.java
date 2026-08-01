@@ -339,27 +339,19 @@ public class FtpController {
 
     @GetMapping("/previewPdf/{fileToken}")
     public void previewPdf(@PathVariable String fileToken, HttpServletResponse response) {
-        Files files = this.fileService.readFileFromCache(fileToken);
-        if (files == null || !this.fileService.isPdf(files.getFileType())) {
+        FmNode fmNode = this.nodeService.getByToken(fileToken);
+        if (fmNode == null || !this.fileService.isPdf(fmNode.getMimeType())) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
-        File pdfFile = new File(files.getStoragePath());
-        if (!pdfFile.exists()) {
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-
-        try (FileInputStream in = new FileInputStream(pdfFile)) {
+        fmNode = this.nodePermissionService.checkPermission(fmNode, fmNode.getOwnerId());
+        StorageLocation location = this.nodeService.location(fmNode);
+        try (InputStream in = this.storageService.open(location)) {
             response.setContentType("application/pdf");
-            response.setHeader("Content-Disposition", "inline; filename=" + pdfFile.getName());
+            response.setHeader("Content-Disposition", "inline; filename=" + fmNode.getNodeName());
 
             OutputStream out = response.getOutputStream();
-            byte[] buffer = new byte[4096];
-            int length;
-            while ((length = in.read(buffer)) != -1) {
-                out.write(buffer, 0, length);
-            }
+            in.transferTo(out);
             out.flush();
             out.close();
         } catch (IOException e) {
@@ -372,10 +364,11 @@ public class FtpController {
         if (!StringUtils.hasText(dto.getMagnet())) {
             return ApiResponse.error("请提供下载地址");
         }
-        Files file = this.fileDownloadService.downloadFromMagnet(dto.getMagnet(), this.loginService.getLoginId(), this.loginService.getFtpCache().currentFoldId());
-        FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(file.getId(), true, file.getName());
-        ftpDirsDTO.setFileType(file.getFileType());
-        ftpDirsDTO.setSort(file.getSort());
+        UserFtpCache ftpCache = this.loginService.getFtpCache();
+        FmNode fmNode = this.fileDownloadService.downloadFromMagnet(dto.getMagnet(), ftpCache.currentFoldId(), ftpCache.getLoginId());
+        FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(fmNode.getId(), true, fmNode.getNodeName());
+        ftpDirsDTO.setFileType(fmNode.getMimeType());
+        ftpDirsDTO.setSort(fmNode.getSort());
         return ApiResponse.ok(ftpDirsDTO);
     }
 

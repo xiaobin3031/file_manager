@@ -6,7 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xiaobin.home.config.FtpConfig;
 import com.xiaobin.home.constant.FileStatusConstant;
 import com.xiaobin.home.entity.Files;
+import com.xiaobin.home.entity.FmDownload;
 import com.xiaobin.home.exception.SimpleBizException;
+import com.xiaobin.home.node.NodeService;
+import com.xiaobin.home.node.entity.FmNode;
+import com.xiaobin.home.orm.Orm;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.FoldsDao;
 import com.xiaobin.home.repository.LogsDao;
@@ -75,6 +79,10 @@ public class FileDownloadService {
     private LogsDao logsDao;
     @Autowired
     private FoldsDao foldsDao;
+    @Autowired
+    private Orm orm;
+    @Autowired
+    private NodeService nodeService;
 
     private void login() {
         log.info("开始登录");
@@ -177,6 +185,32 @@ public class FileDownloadService {
         return files;
     }
 
+    private FmNode saveDhtDownload(String hash, Long foldId, Integer userId) {
+        FmDownload one = this.orm.of(FmDownload.class)
+                .eq(FmDownload::getHash, hash)
+                .eq(FmDownload::getDeleted, 0).one();
+        if (one == null) {
+            one = new FmDownload();
+            one.setHash(hash);
+            one.setCreateTime(LocalDateTime.now());
+            this.orm.save(one);
+            if (one.getId() == null) {
+                throw new SimpleBizException("创建下载任务失败");
+            }
+        }
+
+        FmNode child = new FmNode();
+        child.setNodeName(hash);
+        child.setDownloadId(one.getId());
+        child.setOwnerId(userId);
+        child.setStatus(FileStatusConstant.DOWNLOAD);
+        FmNode parent = new FmNode();
+        parent.setId(foldId);
+        parent.setOwnerId(userId);
+        this.nodeService.addChild(parent, child);
+        return child;
+    }
+
     private Files buildDhtFile(String hash, Long foldId, Integer userId) {
         Files files = this.filesDao.loadDhtFile(hash);
         if (files == null) {
@@ -214,7 +248,7 @@ public class FileDownloadService {
     }
 
     @Transactional
-    public Files downloadFromMagnet(String magnet, Integer userId, Long foldId) {
+    public FmNode downloadFromMagnet(String magnet, long foldId, Integer userId) {
         // 解析成hash
         Pattern pattern = Pattern.compile("magnet:\\?xt=urn:btih:([a-zA-Z0-9]+)");
         Matcher matcher = pattern.matcher(magnet);
@@ -226,7 +260,6 @@ public class FileDownloadService {
             throw new SimpleBizException("磁力链接不合法");
         }
         log.info("开始下载：{}", magnet);
-        Files files = this.buildDhtFile(hash, foldId, userId);
         // 先查询一下，再来做决定
         Map<String, Object> info = this.loadInfo(hash);
         if (info == null) {
@@ -236,8 +269,7 @@ public class FileDownloadService {
                 throw new SimpleBizException("添加下载任务失败");
             }
         }
-
-        return files;
+        return this.saveDhtDownload(hash, foldId, userId);
     }
 
     public void checkDownloadFileIsFinish(Files files) throws IOException {

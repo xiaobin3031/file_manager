@@ -1,5 +1,6 @@
 package com.xiaobin.home.service;
 
+import com.xiaobin.home.archive.ArchiveService;
 import com.xiaobin.home.config.FtpConfig;
 import com.xiaobin.home.constant.Constant;
 import com.xiaobin.home.constant.FileStatusConstant;
@@ -78,6 +79,8 @@ public class FileService {
     private NodeService nodeService;
     @Autowired
     private NodePermissionService nodePermissionService;
+    @Autowired
+    private ArchiveService archiveService;
 
     @PostConstruct
     public void fillFileType() {
@@ -651,8 +654,7 @@ public class FileService {
                         FmNode fmNode = this.nodeService.get(fileId);
                         if (fmNode != null && FileStatusConstant.isUnzip(fmNode.getStatus())) {
                             if (Constant.isFile(fmNode.getStatus())) {
-                                FmStorage fmStorage = this.orm.of(FmStorage.class).eq(FmStorage::getId, fmNode.getStorageId()).one();
-                                this.unzipZipShell(fmNode, fmStorage);
+                                this.archiveService.decompress(fmNode);
                             } else if (Constant.isFold(fmNode.getStatus())) {
                                 this.orm.ofUpdate(FmNode.class)
                                         .set(FmNode::getParentId, fmNode.getParentId())
@@ -706,71 +708,71 @@ public class FileService {
         if (!"application/zip".equals(fmNode.getMimeType()) && !"application/x-7z-compressed".equals(fmNode.getMimeType())) {
             return;
         }
-        StorageLocation location = new StorageLocation("", fmStorage.getPath());
-        try {
-
-            String name = fmNode.getNodeName();
-            name = name.substring(0, name.lastIndexOf("."));
-            File dir = new File(zipFilePath.getParentFile(), name);
-            if (!dir.exists() && !dir.mkdirs()) {
-                log.error("文件夹[{}] 创建失败", dir.getAbsolutePath());
-                return;
-            }
-            Long foldId = addFold(dir.getName(), curFoldId, userId).getId();
-
-            // 构建 unzip 命令（注意：-O 可能不是所有 unzip 都支持）
-            String[] command = {
-                    "7z", "x", files.getStoragePath(), "-o" + dir.getAbsolutePath(), "-y"
-            };
-
-            log.info("执行命令: {}", String.join(" ", command));
-
-            ProcessBuilder builder = new ProcessBuilder(command);
-            builder.redirectErrorStream(true);  // 合并 stderr 到 stdout
-
-            Process process = builder.start();
-            // 🔥 关闭子进程的 stdin，防止 unzip 阻塞等待输入
-            process.getOutputStream().close();
-
-            // 读取命令输出
-            Thread infoThread = Thread.ofVirtual().start(() -> {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        log.info("[unzip] {}", line);
-                    }
-                } catch (Exception e) {
-                    log.error("[unzip] 读取命令输出失败: {}", e.getMessage(), e);
-                }
-            });
-
-            Thread stderrThread = Thread.ofVirtual().start(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        log.warn("[unzip stderr] {}", line);
-                    }
-                } catch (Exception e) {
-                    log.error("读取 unzip stderr 出错", e);
-                }
-            });
-
-            process.waitFor();
-            infoThread.join();
-            stderrThread.join();
-//            if (exitCode != 0) {
-//                throw new SimpleBizException("unzip 解压失败，退出码: " + exitCode);
+//        StorageLocation location = new StorageLocation("", fmStorage.getPath());
+//        try {
+//
+//            String name = fmNode.getNodeName();
+//            name = name.substring(0, name.lastIndexOf("."));
+//            File dir = new File(zipFilePath.getParentFile(), name);
+//            if (!dir.exists() && !dir.mkdirs()) {
+//                log.error("文件夹[{}] 创建失败", dir.getAbsolutePath());
+//                return;
 //            }
-            log.info("✅ 解压完成");
-
-            this.storePhysicsFiles(dir, foldId, userId);
-        } catch (Exception e) {
-            log.info("解码zip文件失败: {}", files.getName(), e);
-        } finally {
-            files.setStatus(FileStatusConstant.INIT);
-            this.filesDao.save(files);
-        }
+//            Long foldId = addFold(dir.getName(), curFoldId, userId).getId();
+//
+//            // 构建 unzip 命令（注意：-O 可能不是所有 unzip 都支持）
+//            String[] command = {
+//                    "7z", "x", files.getStoragePath(), "-o" + dir.getAbsolutePath(), "-y"
+//            };
+//
+//            log.info("执行命令: {}", String.join(" ", command));
+//
+//            ProcessBuilder builder = new ProcessBuilder(command);
+//            builder.redirectErrorStream(true);  // 合并 stderr 到 stdout
+//
+//            Process process = builder.start();
+//            // 🔥 关闭子进程的 stdin，防止 unzip 阻塞等待输入
+//            process.getOutputStream().close();
+//
+//            // 读取命令输出
+//            Thread infoThread = Thread.ofVirtual().start(() -> {
+//                try (BufferedReader reader = new BufferedReader(
+//                        new InputStreamReader(process.getInputStream()))) {
+//                    String line;
+//                    while ((line = reader.readLine()) != null) {
+//                        log.info("[unzip] {}", line);
+//                    }
+//                } catch (Exception e) {
+//                    log.error("[unzip] 读取命令输出失败: {}", e.getMessage(), e);
+//                }
+//            });
+//
+//            Thread stderrThread = Thread.ofVirtual().start(() -> {
+//                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+//                    String line;
+//                    while ((line = reader.readLine()) != null) {
+//                        log.warn("[unzip stderr] {}", line);
+//                    }
+//                } catch (Exception e) {
+//                    log.error("读取 unzip stderr 出错", e);
+//                }
+//            });
+//
+//            process.waitFor();
+//            infoThread.join();
+//            stderrThread.join();
+////            if (exitCode != 0) {
+////                throw new SimpleBizException("unzip 解压失败，退出码: " + exitCode);
+////            }
+//            log.info("✅ 解压完成");
+//
+//            this.storePhysicsFiles(dir, foldId, userId);
+//        } catch (Exception e) {
+//            log.info("解码zip文件失败: {}", files.getName(), e);
+//        } finally {
+//            files.setStatus(FileStatusConstant.INIT);
+//            this.filesDao.save(files);
+//        }
     }
 
     // 防止 Zip Slip 攻击
