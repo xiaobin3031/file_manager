@@ -86,7 +86,9 @@ public class LoginService {
         }
         String token = UUID.randomUUID().toString().replaceAll("-", "");
         LoginUser loginUser = new LoginUser();
-        loginUser.setId(user.getId());
+        // loginUser.setId(user.getId());
+        // 暂时都是1
+        loginUser.setId(1);
         loginUser.setToken(token);
         loginUser.setUsername(dto.getUsername());
         loginUser.setLoginTime(LocalDateTime.now());

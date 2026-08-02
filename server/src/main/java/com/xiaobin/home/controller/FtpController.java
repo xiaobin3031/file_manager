@@ -29,11 +29,13 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @RequestMapping("/ftp")
 @RestController
 @Slf4j
 public class FtpController {
+    private static final List<String> PERMIT_FOLD_NAME = List.of("动漫", "电影", "电视剧", "纪录片", "综艺", "短剧");
 
     @Autowired
     private FileService fileService;
@@ -92,6 +94,10 @@ public class FtpController {
         } else {
             long foldId = ftpCache.getFoldIds().isEmpty() ? 0L : ftpCache.getFoldIds().getFirst();
             List<Folds> folds = this.foldsDao.loadFolds(foldId, this.loginService.getLoginId());
+            boolean notMatch = !this.loginService.getLoginUser().getUsername().equals("xiaobin");
+            if (foldId == 0L && notMatch) {
+                folds = folds.stream().filter(a -> PERMIT_FOLD_NAME.contains(a.getName())).collect(Collectors.toList());
+            }
             folds.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), 0)));
             for (Folds fold : folds) {
                 FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(fold.getId(), false, fold.getName());
@@ -219,10 +225,10 @@ public class FtpController {
         response.setHeader("Content-Length", String.valueOf(java.nio.file.Files.size(file.toPath())));
 
         // 以流的方式写出文件内容
-        try(InputStream inputStream = new FileInputStream(file);OutputStream out = response.getOutputStream()) {
+        try (InputStream inputStream = new FileInputStream(file); OutputStream out = response.getOutputStream()) {
             int read;
             byte[] bytes = new byte[10240];
-            while( (read = inputStream.read(bytes)) != -1 ) {
+            while ((read = inputStream.read(bytes)) != -1) {
                 out.write(bytes, 0, read);
             }
             out.flush();

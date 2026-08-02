@@ -74,10 +74,10 @@ const dblClickFile = async (file) => {
     const $a = document.createElement('a')
     if(isVideo(file)) {
       // todo 视频预览
-      window.open(`page/videoPlay.html?fileId=${file.id}&name=${file.name}`, "_blank")
+      window.open(`page/videoPlay.html?fileId=${file.id}`, "_blank")
     }else if(isImage(file)) {
       // todo 图片预览
-      window.open(`page/imagePreview.html?fileId=${file.id}&name=${file.name}`, '_blank')
+      window.open(`page/imagePreview.html?fileId=${file.id}`, '_blank')
     }else if(isPdf(file)) {
       // todo pdf预览
       let res = await request('/ftp/prepareFile', {
