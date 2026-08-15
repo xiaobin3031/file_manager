@@ -4,7 +4,6 @@ import com.xiaobin.home.constant.Constant;
 import com.xiaobin.home.dto.*;
 import com.xiaobin.home.dto.login.UserFtpCache;
 import com.xiaobin.home.entity.FileDownloadPlan;
-import com.xiaobin.home.entity.Files;
 import com.xiaobin.home.exception.SimpleBizException;
 import com.xiaobin.home.node.NodePermissionService;
 import com.xiaobin.home.node.NodeService;
@@ -29,7 +28,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathExpressionException;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -377,10 +379,9 @@ public class FtpController {
         if (file == null) {
             return ApiResponse.error("请提供torrent文件");
         }
-        Files files = this.fileDownloadService.downloadFromTorrent(file, this.loginService.getLoginId(), this.loginService.getFtpCache().currentFoldId());
-        FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(files.getId(), true, file.getName());
-        ftpDirsDTO.setFileType(files.getFileType());
-        ftpDirsDTO.setSort(files.getSort());
+        FmNode fmNode = this.fileDownloadService.downloadFromTorrent(file, this.loginService.getLoginId(), this.loginService.getFtpCache().currentFoldId());
+        FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(fmNode.getId(), true, file.getName());
+        ftpDirsDTO.setSort(fmNode.getSort());
         return ApiResponse.ok(ftpDirsDTO);
     }
 

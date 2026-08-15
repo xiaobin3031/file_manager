@@ -169,8 +169,7 @@ public class FileDownloadService {
     }
 
     @Transactional
-    public Files downloadFromTorrent(MultipartFile file, Integer userId, Long foldId) {
-        Files files;
+    public FmNode downloadFromTorrent(MultipartFile file, Integer userId, Long foldId) {
         byte[] bytes;
         String hash;
         try {
@@ -180,9 +179,8 @@ public class FileDownloadService {
             log.error("读取torrent的hash失败: {}", e.getMessage());
             throw new SimpleBizException("torrent文件读取失败: " + file.getOriginalFilename());
         }
-        files = this.buildDhtFile(hash, foldId, userId);
         this.uploadTorrent(ADD_TORRENT_PATH, bytes, file.getOriginalFilename());
-        return files;
+        return this.saveDhtDownload(hash, foldId, userId);
     }
 
     private FmNode saveDhtDownload(String hash, Long foldId, Integer userId) {
