@@ -183,7 +183,7 @@ public class FileService {
 
     private void savePdfSample(File output, Files files) {
         File file = new File(files.getStoragePath());
-        try (PDDocument document = PDDocument.load(file)) {
+        try (PDDocument document = Loader.loadPDF(file)) {
             // 加载 PDF 文件
 
             // 渲染 PDF 页面为图像
@@ -1105,7 +1105,9 @@ public class FileService {
         // 生成cbz
         index = 1;
         try (ZipOutputStream zos = new ZipOutputStream(java.nio.file.Files.newOutputStream(targetFile.toPath()))) {
+            int fileIndex = 1;
             for (Path file : allFiles) {
+                log.info("正在合成[{} / {}]: {}", fileIndex, allFiles.size(), file.getFileName().toString());
                 String extension = getExtension(file);
                 if (".pdf".equalsIgnoreCase(extension)) {
                     try (PDDocument document = Loader.loadPDF(file.toFile())) {
@@ -1125,6 +1127,8 @@ public class FileService {
                     java.nio.file.Files.copy(file, zos);
                     zos.closeEntry();
                 }
+
+                fileIndex++;
             }
 
         } catch (IOException e) {
