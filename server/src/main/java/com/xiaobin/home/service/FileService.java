@@ -17,6 +17,7 @@ import com.xiaobin.home.repository.FoldsDao;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1104,13 +1105,28 @@ public class FileService {
         // 生成cbz
         index = 1;
         try (ZipOutputStream zos = new ZipOutputStream(java.nio.file.Files.newOutputStream(targetFile.toPath()))) {
-
-            for (Path image : allFiles) {
-                String name = String.format("%04d%s", index++, getExtension(image));
-                zos.putNextEntry(new ZipEntry(name));
-                java.nio.file.Files.copy(image, zos);
-                zos.closeEntry();
+            for (Path file : allFiles) {
+                String extension = getExtension(file);
+                if (".pdf".equalsIgnoreCase(extension)) {
+                    try (PDDocument document = Loader.loadPDF(file.toFile())) {
+                        PDFRenderer renderer = new PDFRenderer(document);
+                        for (int page = 0; page < document.getNumberOfPages(); page++) {
+                            BufferedImage image = renderer.renderImageWithDPI(page, 150);
+                            String name = String.format("%04d.jpg", index++);
+                            zos.putNextEntry(new ZipEntry(name));
+                            ImageIO.write(image, "jpg", zos);
+                            zos.closeEntry();
+                            image.flush();
+                        }
+                    }
+                } else {
+                    String name = String.format("%04d%s", index++, extension);
+                    zos.putNextEntry(new ZipEntry(name));
+                    java.nio.file.Files.copy(file, zos);
+                    zos.closeEntry();
+                }
             }
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
