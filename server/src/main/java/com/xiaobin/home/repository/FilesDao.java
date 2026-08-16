@@ -14,8 +14,6 @@ public interface FilesDao extends JpaRepository<Files, Long> {
 
     List<Files> findFilesByFoldIdAndUserIdAndDeletedFalse(Long foldId, Integer userId);
 
-    List<Files> findFilesByFoldIdsAndUserIdAndDeletedFalse(List<Long> foldIds, Integer userId);
-
     @Query("select f from Files f where f.foldId = :foldId and f.name = :name and f.userId = :userId and f.deleted = false")
     Files loadFilesByNameInFold(Long foldId, String name, Integer userId);
 

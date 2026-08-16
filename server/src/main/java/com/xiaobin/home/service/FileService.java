@@ -1083,8 +1083,9 @@ public class FileService {
         if (!targetFold.exists() && !targetFold.mkdirs()) {
             throw new SimpleBizException("目录创建失败");
         }
+        Long curFoldId = ftpCache.currentFoldId();
         Integer userId = this.loginService.getLoginId();
-        Folds folds = this.foldsDao.findByIdAndUserIdAndDeletedFalse(ftpCache.currentFoldId(), userId);
+        Folds folds = this.foldsDao.findByIdAndUserIdAndDeletedFalse(curFoldId, userId);
         if (folds == null) throw new SimpleBizException("目录不存在");
         int index = 1;
         File targetFile = new File(targetFold, String.format("%s-%d.cbz", folds.getName(), index));
@@ -1137,7 +1138,7 @@ public class FileService {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        this.addFile(ftpCache.currentFoldId(), targetFile, userId);
+        this.addFile(curFoldId, targetFile, userId);
     }
 
     private String getExtension(Path path) {
