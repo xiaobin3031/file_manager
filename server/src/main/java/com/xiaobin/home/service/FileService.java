@@ -1063,10 +1063,12 @@ public class FileService {
 
     private void loadFolds(List<Long> foldIds, Integer userId, List<Path> allFiles) {
         List<Folds> subFolds = this.foldsDao.loadFoldsByParentIds(foldIds, userId);
+        subFolds.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), a.getId().intValue())));
         if (!subFolds.isEmpty()) {
             this.loadFolds(subFolds.stream().map(Folds::getId).toList(), userId, allFiles);
         }
         List<Files> files = this.filesDao.loadFilesByFoldIds(foldIds, userId);
+        files.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), a.getId().intValue())));
         if (!files.isEmpty()) {
             for (Files file : files) {
                 if (StringUtils.isEmpty(file.getStoragePath())) continue;
@@ -1095,6 +1097,7 @@ public class FileService {
         this.loadFolds(fileIds, userId, allFiles);
 
         List<Files> files = this.filesDao.loadFilesByIds(fileIds, userId);
+        files.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), a.getId().intValue())));
         if (!files.isEmpty()) {
             for (Files file : files) {
                 if (StringUtils.isEmpty(file.getStoragePath())) continue;

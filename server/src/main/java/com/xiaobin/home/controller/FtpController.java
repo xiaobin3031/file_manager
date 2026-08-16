@@ -98,7 +98,7 @@ public class FtpController {
             if (foldId == 0L && notMatch) {
                 folds = folds.stream().filter(a -> PERMIT_FOLD_NAME.contains(a.getName())).collect(Collectors.toList());
             }
-            folds.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), 0)));
+            folds.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), a.getId().intValue())));
             for (Folds fold : folds) {
                 FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(fold.getId(), false, fold.getName());
                 ftpDirsDTO.setSort(fold.getSort());
