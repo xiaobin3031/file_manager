@@ -2,15 +2,18 @@ package com.xiaobin.home.service;
 
 import com.xiaobin.home.config.FtpConfig;
 import com.xiaobin.home.constant.FileStatusConstant;
+import com.xiaobin.home.constant.NodeConstant;
 import com.xiaobin.home.dto.FtpDirsDTO;
 import com.xiaobin.home.dto.FtpRequestDTO;
 import com.xiaobin.home.dto.TmpFileDTO;
 import com.xiaobin.home.dto.login.UserFtpCache;
 import com.xiaobin.home.entity.DictManager;
 import com.xiaobin.home.entity.Files;
+import com.xiaobin.home.entity.FmNode;
 import com.xiaobin.home.entity.Folds;
 import com.xiaobin.home.exception.BizException;
 import com.xiaobin.home.exception.SimpleBizException;
+import com.xiaobin.home.file_manager.NodeHandleRegistry;
 import com.xiaobin.home.repository.DictManagerDao;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.FoldsDao;
@@ -44,7 +47,7 @@ import java.util.zip.ZipOutputStream;
 @Slf4j
 public class FileService {
     private static final Map<String, byte[]> fileCache = new HashMap<>();
-    private static final Map<String, Files> fileTokenCache = new HashMap<>();
+    private static final Map<String, FmNode> fileTokenCache = new HashMap<>();
     private static final Map<Integer, String> userFileCache = new HashMap<>();
     private static final List<Long> toUnzipFiles = new LinkedList<>();
     private static final Lock lock = new ReentrantLock();
@@ -64,6 +67,8 @@ public class FileService {
     private DictManagerDao dictManagerDao;
     @Autowired
     private Environment environment;
+    @Autowired
+    private NodeHandleRegistry nodeHandleRegistry;
 
     @PostConstruct
     public void fillFileType() {
@@ -370,14 +375,14 @@ public class FileService {
         }
     }
 
-    public String generateFileDownloadToken(boolean prepareForPlay, Files files, Integer userId) {
-        String token = UUID.randomUUID().toString().replaceAll("-", "");
-        userFileCache.put(userId, token);
+    public String generateFileDownloadToken(FmNode files) {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        userFileCache.put(files.getOwnerId(), token);
         fileTokenCache.put(token, files);
         return token;
     }
 
-    public Files readFileFromCache(String token) {
+    public FmNode readFileFromCache(String token) {
         return fileTokenCache.get(token);
     }
 
@@ -588,20 +593,20 @@ public class FileService {
     }
 
     @Transactional
-    public Folds addFold(String name, Long parentId, Integer userId) {
-        Folds fold = this.foldsDao.loadFoldsByNameInFold(name, parentId, userId);
+    public FmNode addFold(String name, Long parentId, Integer userId) {
+        FmNode fold = this.nodeHandleRegistry.get(NodeConstant.NODE_FOLD)
+                .query(userId)
+                .eq(FmNode::getNodeName, name)
+                .eq(FmNode::getParentId, parentId)
+                .one();
         if (fold == null) {
-            fold = new Folds();
-            fold.setName(name);
+            fold = new FmNode();
+            fold.setNodeType(NodeConstant.NODE_FOLD);
+            fold.setNodeName(name);
             fold.setParentId(parentId);
-            fold.setCreateAt(LocalDateTime.now());
-            fold.setUserId(userId);
+            fold.setOwnerId(userId);
             fold.setDeleted(false);
-            fold.setCreateAt(LocalDateTime.now());
-            fold.setFoldCount(0);
-            fold.setFileCount(0);
-            this.foldsDao.save(fold);
-            this.foldsDao.updateFoldCount(parentId, 1, userId);
+            fold = this.nodeHandleRegistry.get(fold.getNodeType()).create(fold);
             if (fold.getId() != null && fold.getId() > 0) {
                 File foldDir = new File(this.getRootPath(), String.valueOf(fold.getId()));
                 if (!foldDir.exists() && !foldDir.mkdir()) {

@@ -1,11 +1,10 @@
 package com.xiaobin.home.controller;
 
+import com.xiaobin.home.constant.NodeConstant;
 import com.xiaobin.home.dto.*;
 import com.xiaobin.home.dto.login.UserFtpCache;
-import com.xiaobin.home.entity.FileDownloadPlan;
-import com.xiaobin.home.entity.Files;
-import com.xiaobin.home.entity.Folds;
-import com.xiaobin.home.entity.PlayHistory;
+import com.xiaobin.home.entity.*;
+import com.xiaobin.home.file_manager.NodeHandleRegistry;
 import com.xiaobin.home.repository.FileDownloadPlanDao;
 import com.xiaobin.home.repository.FilesDao;
 import com.xiaobin.home.repository.FoldsDao;
@@ -17,6 +16,7 @@ import com.xiaobin.home.service.LoginService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -27,9 +27,11 @@ import javax.xml.xpath.XPathExpressionException;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @RequestMapping("/ftp")
 @RestController
@@ -53,6 +55,8 @@ public class FtpController {
     private FileDownloadPlanService fileDownloadPlanService;
     @Autowired
     private PlayHistoryDao playHistoryDao;
+    @Autowired
+    private NodeHandleRegistry nodeHandleRegistry;
 
     @GetMapping("/goBack")
     public ApiResponse goBack() {
@@ -83,7 +87,6 @@ public class FtpController {
     public ApiResponse listDirs() {
         UserFtpCache ftpCache = this.loginService.getFtpCache();
         List<FtpDirsDTO> list = new ArrayList<>();
-        FtpDirsDTO lastFiles = null;
         if (ftpCache.isPhysicsFlag()) {
             File[] files = ftpCache.getPhysicsFile().listFiles();
             if (files != null) {
@@ -93,48 +96,23 @@ public class FtpController {
             }
         } else {
             long foldId = ftpCache.getFoldIds().isEmpty() ? 0L : ftpCache.getFoldIds().getFirst();
-            List<Folds> folds = this.foldsDao.loadFolds(foldId, this.loginService.getLoginId());
+            FmNode fmNode = new FmNode();
+            fmNode.setId(foldId);
+            fmNode.setOwnerId(this.loginService.getLoginId());
+            List<FmNode> folds = this.nodeHandleRegistry.get(NodeConstant.NODE_FOLD).children(fmNode);
             boolean notMatch = !this.loginService.getLoginUser().getUsername().equals("xiaobin");
             if (foldId == 0L && notMatch) {
-                folds = folds.stream().filter(a -> PERMIT_FOLD_NAME.contains(a.getName())).collect(Collectors.toList());
+                folds = folds.stream().filter(a -> PERMIT_FOLD_NAME.contains(a.getNodeName())).toList();
             }
-            folds.sort(Comparator.comparing(a -> Objects.requireNonNullElse(a.getSort(), a.getId().intValue())));
-            for (Folds fold : folds) {
-                FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(fold.getId(), false, fold.getName());
-                ftpDirsDTO.setSort(fold.getSort());
-                ftpDirsDTO.setFoldCount(fold.getFoldCount());
-                ftpDirsDTO.setFileCount(fold.getFileCount());
+            for (FmNode fold : folds) {
+                FtpDirsDTO ftpDirsDTO = new FtpDirsDTO(fold.getId(), false, fold.getNodeName());
                 list.add(ftpDirsDTO);
-            }
-            if (foldId > 0L) {
-                List<Files> files = filesDao.findFilesByFoldIdAndUserIdAndDeletedFalse(foldId, this.loginService.getLoginId());
-                this.fileService.formatFiles(files, list);
-            }
-            if (!ftpCache.getFoldIds().isEmpty()) {
-                PlayHistory playHistory = this.playHistoryDao.findOneByFoldIdAndUserIdAndStatus(ftpCache.getFoldIds().getFirst(), this.loginService.getLoginId(), (short) 0);
-                if (log.isDebugEnabled()) {
-                    log.debug("playHistory: {}, foldId: {}", playHistory == null ? 0L : playHistory.getId(), ftpCache.getFoldIds().getFirst());
-                }
-                if (playHistory != null && playHistory.getFileId() != null) {
-                    Files files = this.filesDao.loadById(playHistory.getFileId(), this.loginService.getLoginId());
-                    if (log.isDebugEnabled()) {
-                        log.debug("files is null: {}, files.id: {}", files == null, playHistory.getStart());
-                    }
-                    if (files != null) {
-                        lastFiles = new FtpDirsDTO(files.getId(), true, files.getName());
-                        lastFiles.setFileType(files.getFileType());
-                        lastFiles.setSort(files.getSort());
-                        lastFiles.setStart(playHistory.getStart());
-                        lastFiles.setEnd(playHistory.getEnd());
-                    }
-                }
             }
         }
         ListDirDTO result = new ListDirDTO();
         result.setPath(ftpCache.getPath());
         result.setFiles(list);
         // 查一下有没有进度
-        result.setLastFile(lastFiles);
         result.setCurrentFoldId(ftpCache.currentFoldId());
         return ApiResponse.ok(result);
     }
@@ -160,33 +138,11 @@ public class FtpController {
                 }
             }
         } else {
-            if (dto.getFoldId() == null && dto.getDirName() != null) {
-                int idx = -1;
-                List<String> pathList = ftpCache.getPath().reversed();
-                log.info("当前路径: {}", pathList);
-                for (int i = 0; i < pathList.size(); i++) {
-                    String path = pathList.get(i);
-                    if (path.equals(dto.getDirName())) {
-                        idx = i;
-                        break;
-                    }
-                }
-                if (idx == -1) {
-                    return ApiResponse.error("指定的目录不存在");
-                }
-                ftpCache.setPath(pathList.subList(idx, ftpCache.getPath().size()).reversed());
-                ftpCache.setFoldIds(ftpCache.getFoldIds().subList(idx, ftpCache.getFoldIds().size()));
-                return listDirs();
-            }
-            Folds fold = this.foldsDao.loadSpecialFoldsInFold(dto.getId(), this.loginService.getLoginId());
+            FmNode fold = this.nodeHandleRegistry.get(NodeConstant.NODE_FOLD).get(dto.getId(), this.loginService.getLoginId());
             if (fold != null) {
                 ftpCache.getFoldIds().addFirst(fold.getId());
-                ftpCache.getPath().add(fold.getName());
-                ftpCache.setPhysicsFlag(Boolean.TRUE.equals(fold.getPhysics()));
-                if (ftpCache.isPhysicsFlag()) {
-                    ftpCache.setPhysicsRootPath(fold.getPath());
-                    ftpCache.setPhysicsFile(new File(fold.getPath()));
-                }
+                ftpCache.getPath().add(fold.getNodeName());
+                ftpCache.setPhysicsFlag(false);
                 ftpCache.setCurFileId(null);
                 return listDirs();
             }
@@ -198,10 +154,9 @@ public class FtpController {
     public ApiResponse prepareFile(@RequestBody FtpRequestDTO dto) {
         UserFtpCache ftpCache = this.loginService.getFtpCache();
         if (!ftpCache.isPhysicsFlag()) {
-            Files files = this.filesDao.loadFileInFold(ftpCache.currentFoldId(), dto.getId(), this.loginService.getLoginId());
-            File file = new File(files.getStoragePath());
-            if (file.exists()) {
-                return ApiResponse.ok(this.fileService.generateFileDownloadToken(dto.isPrepareForPlay(), files, this.loginService.getLoginId()));
+            FmNode files = this.nodeHandleRegistry.get(NodeConstant.NODE_FILE).get(dto.getId(), this.loginService.getLoginId());
+            if (files != null) {
+                return ApiResponse.ok(this.fileService.generateFileDownloadToken(files));
             }
         }
 
@@ -213,15 +168,20 @@ public class FtpController {
      */
     @GetMapping("/downloadFile")
     public void downloadFile(@RequestParam("fileToken") String fileToken, HttpServletResponse response) throws IOException {
-        Files files = this.fileService.readFileFromCache(fileToken);
-        File file = new File(files.getStoragePath());
+        FmNode files = this.fileService.readFileFromCache(fileToken);
+        StorageLocation location = this.nodeHandleRegistry.get(files.getNodeType()).location(files);
+        if (location == null) {
+            response.setStatus(HttpStatus.NOT_FOUND.value());
+            return;
+        }
+        File file = new File(location.path());
         String mimeType = java.nio.file.Files.probeContentType(file.toPath());
         if (mimeType == null) mimeType = "application/octet-stream";
 
         // 设置响应头
         response.setContentType(mimeType);
         response.setCharacterEncoding("UTF-8");
-        response.setHeader("Content-Disposition", "attachment; filename=\"" + URLEncoder.encode(files.getName(), StandardCharsets.UTF_8) + "\"");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + URLEncoder.encode(files.getNodeName(), StandardCharsets.UTF_8) + "\"");
         response.setHeader("Content-Length", String.valueOf(java.nio.file.Files.size(file.toPath())));
 
         // 以流的方式写出文件内容
@@ -256,7 +216,7 @@ public class FtpController {
             }
             File foldDir = new File(this.fileService.getRootPath(), String.valueOf(foldId));
             if (!foldDir.exists() && !foldDir.mkdir()) {
-                return ApiResponse.error("文件夹创建失败");
+                return ApiResponse.error("文件夹创建失败")
             }
             File targetFile = new File(foldDir, Objects.requireNonNullElse(file.getOriginalFilename(), UUID.randomUUID().toString()));
             if (!targetFile.exists()) {
